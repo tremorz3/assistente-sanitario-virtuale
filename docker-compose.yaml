@@ -13,6 +13,7 @@ services:
       - "3306:3306"  
     volumes:
       - ./mariadb_data:/var/lib/mysql # mappa la cartella locale per la persistenza dei dati del database.
+      - ./mariadb_init:/docker-entrypoint-initdb.d # script inizializzazione automatica database.
     healthcheck: # verifica lo stato del servizio db: importante perchè il serivizio deve essere correttamente in esecuzione per i servizi successivi
       test: ["CMD", "mariadb", "-h", "localhost", "-uroot", "-prootpassword", "--database=HADB", "--execute=SELECT 1;"]
       interval: 10s
