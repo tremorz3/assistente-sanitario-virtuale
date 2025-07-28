@@ -1,0 +1,21 @@
+services:
+  db:
+    image: mariadb:10.6
+    container_name: mariadb_container
+    restart: unless-stopped # riavvia il container se si ferma, a meno che non sia stato fermato manualmente
+    environment: # variabili d'ambiente per configurare il database.
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: rootpassword # password per l'utente root.
+      MYSQL_DATABASE: HADB # nome del database da creare all'avvio.
+      MYSQL_USER: user # nome dell'utente da creare.
+      MYSQL_PASSWORD: pwd # password per l'utente creato.  
+    ports:
+      - "3306:3306"  
+    volumes:
+      - ./mariadb_data:/var/lib/mysql # mappa la cartella locale per la persistenza dei dati del database.
+    healthcheck: # verifica lo stato del servizio db: importante perchè il serivizio deve essere correttamente in esecuzione per i servizi successivi
+      test: ["CMD", "mariadb", "-h", "localhost", "-uroot", "-prootpassword", "--database=HADB", "--execute=SELECT 1;"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
