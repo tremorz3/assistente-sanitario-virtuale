@@ -230,3 +230,7 @@ Icon?
 # Visual Studio Code
 .vscode/
 .history/
+
+# Dati generati dai container (DA IGNORARE!)
+/mariadb_data/
+/ollama_data/
