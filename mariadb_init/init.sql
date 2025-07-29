@@ -3,7 +3,7 @@ CREATE DATABASE IF NOT EXISTS HADB;
 USE HADB;
 
 CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'pwd';
-GRANT ALL PRIVILEGES ON HADB.* TO 'user'@'%';
+GRANT SELECT, INSERT, UPDATE, DELETE ON HADB.* TO 'user'@'%';
 FLUSH PRIVILEGES;
 
 CREATE TABLE IF NOT EXISTS Specializzazioni (
@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS Utenti (
     id INT PRIMARY KEY AUTO_INCREMENT,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(300) NOT NULL,
-    password_salt VARCHAR(300) NOT NULL,
     tipo_utente ENUM('medico', 'paziente') NOT NULL,
     data_registrazione TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -43,3 +42,65 @@ CREATE TABLE IF NOT EXISTS Pazienti (
     telefono VARCHAR(20),
     FOREIGN KEY (utente_id) REFERENCES Utenti(id) ON DELETE CASCADE
 );
+
+INSERT INTO Specializzazioni (nome) VALUES
+('Agopuntura'),
+('Allergologia'),
+('Andrologia'),
+('Anatomia Patologica'),
+('Anestesia'),
+('Angiologia'),
+('Audioprotesista'),
+('Biologia della Riproduzione'),
+('Cardiochirurgia'),
+('Cardiologia'),
+('Certificazione Medica'),
+('Chinesiologia'),
+('Chiropratica'),
+('Chirurgia Generale'),
+('Chirurgia Plastica ed Estetica'),
+('Chirurgia Specialistica'),
+('Chirurgia Toracica'),
+('Dermatologia'),
+('Diabetologia'),
+('Dietologia e Nutrizione'),
+('Ematologia'),
+('Endocrinologia'),
+('Epatologia'),
+('Fisiatria'),
+('Fisioterapia e Massofisioterapia'),
+('Gastroenterologia'),
+('Geriatria'),
+('Ginecologia'),
+('Immunologia'),
+('Infettivologia'),
+('Internista'),
+('Logopedia'),
+('Medico di Medicina Generale'),
+('Medicina dello Sport'),
+('Medicina Estetica'),
+('Medicina Legale'),
+('Medicina Naturale'),
+('Nefrologia'),
+('Neurochirurgia'),
+('Neurologia'),
+('Odontoiatria e Ortodonzia'),
+('Oftalmologia (Oculistica)'),
+('Oncologia'),
+('Ortopedia'),
+('Osteopatia'),
+('Otorinolaringoiatria'),
+('Pediatria'),
+('Pneumologia'),
+('Podologia'),
+('Posturologia'),
+('Proctologia'),
+('Psichiatria'),
+('Psicologia'),
+('Psicoterapia'),
+('Radiologia e Radiologia Diagnostica'),
+('Reumatologia'),
+('Senologia'),
+('Sessuologia'),
+('Terapia del Dolore'),
+('Urologia');
