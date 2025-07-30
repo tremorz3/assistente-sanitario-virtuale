@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS Utenti (
 CREATE TABLE IF NOT EXISTS Medici (
     id INT PRIMARY KEY AUTO_INCREMENT,
     utente_id INT NOT NULL UNIQUE,
-    specializzazione_id INT,
+    specializzazione_id INT NOT NULL,
     nome VARCHAR(100) NOT NULL,
     cognome VARCHAR(100) NOT NULL,
     citta VARCHAR(100) NOT NULL,
@@ -37,9 +37,9 @@ CREATE TABLE IF NOT EXISTS Medici (
 CREATE TABLE IF NOT EXISTS Pazienti (
     id INT PRIMARY KEY AUTO_INCREMENT,
     utente_id INT NOT NULL UNIQUE,
-    nome VARCHAR(100),
-    cognome VARCHAR(100),
-    telefono VARCHAR(20),
+    nome VARCHAR(100) NOT NULL,
+    cognome VARCHAR(100) NOT NULL,
+    telefono VARCHAR(20) NOT NULL,
     FOREIGN KEY (utente_id) REFERENCES Utenti(id) ON DELETE CASCADE
 );
 
