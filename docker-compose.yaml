@@ -25,15 +25,16 @@ services:
     image: ollama/ollama:latest
     container_name: ollama_container
     restart: unless-stopped 
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "11434:11434"
-    entrypoint: sh
-    command: -c "ollama serve & sleep 5 && ollama run alibayram/medgemma:4b && wait"
     volumes:
       - ./ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     
     
     
