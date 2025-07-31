@@ -1,10 +1,13 @@
+import os
 from fastapi import FastAPI, HTTPException, status 
 from pydantic import BaseModel, Field, EmailStr 
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 # Libreria per la gestione delle password
 from passlib.context import CryptContext
+# Libreria per la gestione dei token JWT
+from jose import JWTError, jwt
 
 # Import per il database
 import mariadb
@@ -15,6 +18,11 @@ app = FastAPI(
     description="API per la gestione dell'orientamento sanitario, autenticazione e servizi correlati.",
 )
 
+# Definizione delle costanti per la gestione dei token JWT
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+
 # Configurazione per l'hashing delle password
 '''
 Viene utilizzato l'algoritmo bcrypt per l'hashing delle password, al posto di SHA256, per una questione di sicurezza, in quanto bcrypt è più lento 
@@ -23,6 +31,11 @@ nell'hashing, mitigando attacchi tramite rainbow tables.
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Definizione dei modelli Pydantic dei dati
+
+# Modello per i token di login
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
 class PazienteRegisration(BaseModel):
     """
@@ -76,7 +89,31 @@ class UserOut(BaseModel):
     email: EmailStr = Field(..., description="Email dell'utente.")
     tipo_utente: str = Field(..., description="Tipo di utente ('medico' o 'paziente').")
 
+'''
+La Secret Key è contenuta nel file .env ed è stata generata col comando `openssl rand -hex 32`, quindi è una stringa casuale di 32 byte (256 bit).
+L'algoritmo di hashing è impostato su HS256 e il tempo di scadenza del token è impostato nel file .env.
+'''
+# Funzione per creare un token JWT
+def create_access_token(data: dict) -> str:
+    '''
+    Args:
+        data (dict): Dati da includere nel token JWT, come email, ID utente e tipo utente.
+    Returns:
+        str: Token JWT codificato.
+    '''
+    # Copia i dati di login per evitare modifiche indesiderate ai dati dell'utente
+    to_encode: dict = data.copy() 
 
+    # Imposta la data di scadenza del token
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+
+    # Crea il token JWT utilizzando la chiave segreta e l'algoritmo specificato
+    encoded_jwt: str = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    return encoded_jwt
+
+# Endpoints dell'API
 """
 Nota: "async" permette a una funzione di "sospendersi" in attesa che un'operazione che richiede tempo sia completata, 
 e nel frattempo, il programma può eseguire altro codice.
@@ -84,7 +121,7 @@ e nel frattempo, il programma può eseguire altro codice.
 
 @app.get("/")
 async def read_root():
-    return {"message": "Benvenuto nell'Assistente Virtuale Sanitario!"}
+    return {"message": "Benvenuto nell'API dell'Assistente Virtuale Sanitario!"}
 
 @app.post("/register/paziente", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register_paziente(paziente: PazienteRegisration) -> UserOut:
@@ -200,6 +237,49 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Si è verificato un errore interno durante la registrazione."
+        )
+    finally:
+        close_db_resources(conn, cursor)
+
+@app.post("/login", response_model=Token)
+async def login(user: UserLogin) ->  Token:
+    '''
+    Autentica un utente e restituisce un token di accesso. 
+    Args:
+        user (UserLogin): Dati di accesso dell'utente (email e password).
+    Returns:
+        Token: Token di accesso JWT se le credenziali sono corrette.
+    Raises:
+        HTTPException: Se le credenziali non sono valide o si verifica un errore durante il login.  
+    '''
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Query per recuperare l'utente nel database
+        query: str = "SELECT id, email, password_hash, tipo_utente FROM Utenti WHERE email = ?"
+        cursor.execute(query, (user.email,))
+        utente = cursor.fetchone()
+
+        # Se l'utente non esiste o la password è sbagliata, lancia un'eccezione
+        if not utente or not pwd_context.verify(user.password, utente['password_hash']):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Email o password non validi.",            
+            )
+        
+        # Se le credenziali sono corrette, crea il token di accesso
+        access_token: str = create_access_token(data={"sub": utente['email'], "id": utente['id'], "tipo_utente": utente['tipo_utente']})
+
+        # Bearer Token è uno standard per l'autenticazione, che specifica che il portatore (bearer) del token ha accesso alle risorse protette
+        return Token(access_token=access_token, token_type="bearer")
+    except mariadb.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Si è verificato un errore interno durante il login."
         )
     finally:
         close_db_resources(conn, cursor)
