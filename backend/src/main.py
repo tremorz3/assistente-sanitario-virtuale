@@ -11,7 +11,7 @@ from jose import JWTError, jwt
 
 # Import per il database
 import mariadb
-from .database import get_db_connection, close_db_resources
+from database import get_db_connection, close_db_resources
 
 app = FastAPI(
     title="Assistente Virtuale Sanitario API",
@@ -77,8 +77,8 @@ class SpecializzazioneOut(BaseModel):
     Schema Pydantic per la rappresentazione di una specializzazione.
     Utilizzato per la risposta degli endpoint.
     """
-    id: int = Field(..., description="ID unico della specializzazione.")
-    nome: str = Field(..., max_length=100, description="Nome della specializzazione (es. Cardiologia).")
+    id: int
+    nome: str
 
 class UserOut(BaseModel):
     """
@@ -88,6 +88,7 @@ class UserOut(BaseModel):
     id: int = Field(..., description="ID unico dell'utente.")
     email: EmailStr = Field(..., description="Email dell'utente.")
     tipo_utente: str = Field(..., description="Tipo di utente ('medico' o 'paziente').")
+    token: Optional[Token] = Field(None, description="Token di accesso JWT. (Opzionale)")
 
 '''
 La Secret Key è contenuta nel file .env ed è stata generata col comando `openssl rand -hex 32`, quindi è una stringa casuale di 32 byte (256 bit).
@@ -123,7 +124,7 @@ e nel frattempo, il programma può eseguire altro codice.
 async def read_root():
     return {"message": "Benvenuto nell'API dell'Assistente Virtuale Sanitario!"}
 
-@app.post("/register/paziente", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@app.post("/register/paziente", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["Registrazione"])
 async def register_paziente(paziente: PazienteRegisration) -> UserOut:
     '''
     Registra un nuovo paziente nel database.
@@ -174,7 +175,7 @@ async def register_paziente(paziente: PazienteRegisration) -> UserOut:
     finally:
         close_db_resources(conn, cursor)
 
-@app.post("/register/medico", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+@app.post("/register/medico", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["Registrazione"])
 async def register_medico(medico: MedicoRegistration) -> UserOut:
     '''
     Registra un nuovo medico nel database.
@@ -241,14 +242,14 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
     finally:
         close_db_resources(conn, cursor)
 
-@app.post("/login", response_model=Token)
-async def login(user: UserLogin) ->  Token:
+@app.post("/login", response_model=UserOut, tags=["Autenticazione"])
+async def login(user: UserLogin) ->  UserOut:
     '''
     Autentica un utente e restituisce un token di accesso. 
     Args:
         user (UserLogin): Dati di accesso dell'utente (email e password).
     Returns:
-        Token: Token di accesso JWT se le credenziali sono corrette.
+        UserOut: Dati dell'utente autenticato (ID, email, tipo utente, token di accesso).
     Raises:
         HTTPException: Se le credenziali non sono valide o si verifica un errore durante il login.  
     '''
@@ -273,13 +274,40 @@ async def login(user: UserLogin) ->  Token:
         
         # Se le credenziali sono corrette, crea il token di accesso
         access_token: str = create_access_token(data={"sub": utente['email'], "id": utente['id'], "tipo_utente": utente['tipo_utente']})
+        token: Token = Token(access_token=access_token, token_type="bearer")
 
         # Bearer Token è uno standard per l'autenticazione, che specifica che il portatore (bearer) del token ha accesso alle risorse protette
-        return Token(access_token=access_token, token_type="bearer")
+        return UserOut(id=utente['id'], email=utente['email'], tipo_utente=utente['tipo_utente'], token=token)
     except mariadb.Error as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Si è verificato un errore interno durante il login."
+        )
+    finally:
+        close_db_resources(conn, cursor)
+        
+@app.get("/specializzazioni", response_model=List[SpecializzazioneOut], tags=["Specializzazioni"])
+async def get_specializzazioni() -> List[SpecializzazioneOut]:
+    '''
+    Recupera tutte le specializzazioni dal database.
+    Returns:
+        List[SpecializzazioneOut]: Lista di oggetti SpecializzazioneOut.
+    Raises:
+        HTTPException: Se si verifica un errore durante il recupero delle specializzazioni.
+    '''
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Specializzazioni")
+        specializzazioni = cursor.fetchall()
+        return [SpecializzazioneOut(**spec) for spec in specializzazioni]
+    except mariadb.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Si è verificato un errore interno durante il recupero delle specializzazioni."
         )
     finally:
         close_db_resources(conn, cursor)
