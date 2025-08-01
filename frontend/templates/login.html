@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+            width: 300px; /* Larghezza fissa per contenere i campi */
+        }
+
+        .login-container h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .login-container input[type="email"],
+        .login-container input[type="password"] {
+            width: 100%; /* I campi prenderanno la larghezza del contenitore */
+            padding: 12px 15px;
+            margin: 0; /* Rimuove i margini di default */
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding e bordo nella larghezza totale */
+            font-size: 16px;
+        }
+
+        .login-container button {
+            width: 100%; /* Il bottone prenderà la larghezza del contenitore */
+            padding: 12px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease; /* Transizione per il cambio colore */
+        }
+
+        .login-container button:hover {
+            background-color: #4CAF50;
+        }
+
+        .register-link {
+            font-size: 14px;
+            color: #555;
+            text-align: center;
+        }
+
+        .register-link a {
+            color: #2196F3; /* Blu, per coerenza con l'hover del bottone */
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .success {
+            color: #155724;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <form class="login-container" action="/pagina-login" method="post">
+        <h2>Login</h2>
+
+        {% if success_message %}
+            <div class="success">{{ success_message }}</div>
+        {% endif %}
+                
+        {% if error %}
+            <p style="color: red;">{{ error }}</p>
+        {% endif %}
+
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="password" name="password" placeholder="Password" required>
+
+        <button type="submit">Log-in</button>
+        <p class="register-link">Non hai un account? Registrati: <a href="/pagina-registrazione-paziente">Paziente</a> o <a href="/pagina-registrazione-medico">Medico</a></p>
+    </form>
+</body>
+</html>

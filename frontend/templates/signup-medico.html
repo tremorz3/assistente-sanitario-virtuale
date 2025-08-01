@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrazione Medico</title>
+    <style>
+        /* Stile generale per centrare il contenuto */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Aumenta l'altezza minima per dare più spazio ai nuovi campi */
+            min-height: 100vh; 
+            padding: 20px 0; /* Aggiunge un po' di padding verticale */
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+
+        /* Contenitore del modulo */
+        .register-container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        /* Titolo del modulo */
+        h1 {
+            color: #333;
+            margin-bottom: 24px;
+        }
+
+        /* Stile per tutti i campi del modulo */
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        select,
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        /* Stile specifico per il bottone */
+        button {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Stile per i messaggi di errore */
+        .error {
+            color: #d9534f;
+            background-color: #f2dede;
+            border: 1px solid #ebccd1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <h1>Registrazione Medico</h1>
+
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <form action="/pagina-registrazione-medico" method="post">
+            <input type="text" id="nome" name="nome" placeholder="Nome" required>
+            <input type="text" id="cognome" name="cognome" placeholder="Cognome" required>
+            <input type="text" id="citta" name="citta" placeholder="Città" required>
+            <input type="text" id="telefono" name="telefono" placeholder="Telefono" required minlength="10" maxlength="10">
+
+            <select id="specializzazione" name="specializzazione_id" required>
+                <option value="" disabled selected>Seleziona una specializzazione</option>
+                {% for spec in specializzazioni %}
+                <option value="{{ spec.id }}">{{ spec.nome }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" id="ordine_iscrizione" name="ordine_iscrizione" placeholder="Ordine di iscrizione" required>
+            <input type="text" id="numero_iscrizione" name="numero_iscrizione" placeholder="Numero di iscrizione" required>
+            <input type="text" id="provincia_iscrizione" name="provincia_iscrizione" placeholder="Provincia di iscrizione" required>
+
+            <input type="email" id="email" name="email" placeholder="Email" required>
+            <input type="password" id="password" name="password" placeholder="Password" required minlength="8">
+            
+            <button type="submit">Registrati</button>
+        </form>
+    </div>
+</body>
+</html>
