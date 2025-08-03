@@ -2,39 +2,38 @@ services:
   db:
     image: mariadb:10.6
     container_name: mariadb_container
-    restart: unless-stopped # riavvia il container se si ferma, a meno che non sia stato fermato manualmente
-    environment: # variabili d'ambiente per configurare il database.
+    restart: unless-stopped
+    environment:
       MYSQL_ROOT_USER: root
-      MYSQL_ROOT_PASSWORD: rootpassword # password per l'utente root.
-      MYSQL_DATABASE: HADB # nome del database da creare all'avvio.
-      MYSQL_USER: user # nome dell'utente da creare.
-      MYSQL_PASSWORD: pwd # password per l'utente creato.  
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: HADB
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pwd
     ports:
-      - "3306:3306"  
+      - "3306:3306"
     volumes:
-      - ./mariadb_data:/var/lib/mysql # mappa la cartella locale per la persistenza dei dati del database.
-      - ./mariadb_init:/docker-entrypoint-initdb.d # script inizializzazione automatica database.
-    healthcheck: # verifica lo stato del servizio db: importante perchè il serivizio deve essere correttamente in esecuzione per i servizi successivi
+      - ./mariadb_data:/var/lib/mysql
+      - ./mariadb_init:/docker-entrypoint-initdb.d
+    healthcheck:
       test: ["CMD", "mariadb", "-h", "localhost", "-uroot", "-prootpassword", "--database=HADB", "--execute=SELECT 1;"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
-  # servizio ollama
+
   ollama:
     image: ollama/ollama:latest
     container_name: ollama_container
-    restart: unless-stopped 
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
       - ./ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/"]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 10s
     deploy:
       resources:
         reservations:
@@ -42,5 +41,40 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
-    
-    
+
+  # Servizio di backend (precedentemente logic_api)
+  backend:
+    build: ./backend  # Punta alla cartella 'backend'
+    container_name: backend_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_USER: user
+      DB_PASSWORD: pwd
+      DB_NAME: HADB
+      OLLAMA_API_URL: http://ollama:11434/api/chat
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  # Servizio di frontend (precedentemente ui_server)
+  frontend:
+    build: ./frontend # Punta alla cartella 'frontend'
+    container_name: frontend_ui
+    restart: unless-stopped
+    environment:
+      # L'URL dell'API ora punta al servizio 'backend'
+      API_BASE_URL: http://backend:8001
+    ports:
+      - "8000:8000"
+    depends_on:
+      - backend
+
+volumes:
+  mariadb_data:
+  ollama_data:

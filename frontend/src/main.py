@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 app = FastAPI(title="Assistente Virtuale Sanitario Web Server")
 
-templates_dir = os.getenv("TEMPLATES_DIR", "../templates")
+templates_dir = os.getenv("TEMPLATES_DIR", "templates")
 templates = Jinja2Templates(directory=templates_dir)
 API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8001") 
 
@@ -19,6 +19,13 @@ class APIParams(BaseModel):
     method: str  # Es. "POST", "GET"
     endpoint: str  # Nome dell'endpoint API da utilizzare
     payload: Optional[Dict[str, Any]] = None
+
+# --- Modello per i dati ricevuti dal Browser ---
+
+class ChatRequestFromBrowser(BaseModel):
+    domanda: str
+    location: Optional[Dict[str, float]] = None
+
 
 def call_api(params: APIParams, token: Optional[str] = None) -> Dict[str, Any]:
     """
@@ -63,6 +70,11 @@ def call_api(params: APIParams, token: Optional[str] = None) -> Dict[str, Any]:
     except requests.exceptions.RequestException as e:
         # Errore di connessione o di rete
         raise HTTPException(status_code=503, detail=f"Errore di comunicazione con l'API: {e}")
+
+@app.get("/", response_class=HTMLResponse)
+def serve_chat_page(request: Request):
+    """Serve la pagina HTML iniziale."""
+    return templates.TemplateResponse("chat.html", {"request": request})
 
 
 @app.get("/pagina-login", response_class=HTMLResponse)
@@ -259,3 +271,41 @@ async def post_medico_register_page(
             "specializzazioni": lista_specializzazioni
         }
         return templates.TemplateResponse("signup-medico.html", context)
+
+@app.post("/chat")
+def proxy_chat_request(request: ChatRequestFromBrowser):
+    """
+    Riceve la richiesta dal browser e la inoltra all'API di logica
+    usando la funzione helper centralizzata.
+    """
+    # Prepara il payload per l'API di logica
+    payload_to_logic_api = {
+        "domanda": request.domanda,
+        "location": request.location
+    }
+
+    # Prepara i parametri per la funzione call_api
+    api_params = APIParams(
+        method="POST",
+        endpoint="/chat",
+        payload=payload_to_logic_api
+    )
+    
+    # Chiama l'API di logica e restituisce il risultato al browser
+    return call_api(params=api_params)
+
+
+@app.post("/reset")
+def proxy_reset_request():
+    """
+    Inoltra la richiesta di reset al backend di logica
+    usando la funzione helper centralizzata.
+    """
+    # Prepara i parametri per la funzione call_api (senza payload)
+    api_params = APIParams(
+        method="POST",
+        endpoint="/reset"
+    )
+
+    # Chiama l'API di logica e restituisce il risultato
+    return call_api(params=api_params)

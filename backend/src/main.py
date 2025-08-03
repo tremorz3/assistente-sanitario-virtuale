@@ -1,7 +1,8 @@
+import requests
 import os
 from fastapi import FastAPI, HTTPException, status 
 from pydantic import BaseModel, Field, EmailStr 
-from typing import Optional, List
+from typing import Optional, List, Literal, Dict
 from datetime import datetime, timedelta, timezone
 
 # Libreria per la gestione delle password
@@ -90,6 +91,35 @@ class UserOut(BaseModel):
     tipo_utente: str = Field(..., description="Tipo di utente ('medico' o 'paziente').")
     token: Optional[Token] = Field(None, description="Token di accesso JWT. (Opzionale)")
 
+class Messaggio(BaseModel):
+    role: Literal["system", "user", "assistant"]
+    content: str
+
+class RichiestaChat(BaseModel):
+    domanda: str
+    location: Optional[Dict[str, float]] = None
+    client_ip: Optional[str] = None # Manteniamo la logica dell'IP fallback
+
+class RichiestaOllama(BaseModel):
+    model: str = "alibayram/medgemma:4b"
+    messages: List[Messaggio]
+    stream: bool = False
+
+class RispostaOllama(BaseModel):
+    message: Messaggio
+
+def leggi_prompt_da_file(percorso_file: str) -> str:
+    with open(percorso_file, 'r', encoding='utf-8') as f:
+        return f.read().strip()
+    
+PROMPT_DI_SISTEMA = leggi_prompt_da_file("prompt.txt")
+
+storico_chat: List[Messaggio] = [
+    Messaggio(role="system", content=PROMPT_DI_SISTEMA)
+]
+
+# Legge l'URL di Ollama dalla variabile d'ambiente impostata nel docker-compose.yml
+OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
 '''
 La Secret Key è contenuta nel file .env ed è stata generata col comando `openssl rand -hex 32`, quindi è una stringa casuale di 32 byte (256 bit).
 L'algoritmo di hashing è impostato su HS256 e il tempo di scadenza del token è impostato nel file .env.
@@ -123,6 +153,76 @@ e nel frattempo, il programma può eseguire altro codice.
 @app.get("/")
 async def read_root():
     return {"message": "Benvenuto nell'API dell'Assistente Virtuale Sanitario!"}
+
+@app.post("/chat", response_model=Messaggio)
+def chat_con_ai(request: RichiestaChat):
+    """
+    Gestisce un singolo turno di chat. Riceve la domanda dell'utente,
+    la arricchisce con informazioni di localizzazione, interroga il modello AI
+    e restituisce la sua risposta.
+    """
+    contenuto_utente = request.domanda
+    location_info = ""
+
+    # Cerca di ottenere un contesto di localizzazione, dando priorità
+    # alle coordinate precise fornite dal client.
+    if request.location:
+        # Se sono presenti coordinate precise, le formatta in una stringa.
+        lat = request.location.get('lat')
+        lon = request.location.get('lon')
+        if lat is not None and lon is not None:
+             location_info = f"\n[INFO POSIZIONE UTENTE: Lat={lat}, Lon={lon}]"
+    elif request.client_ip:
+        # Altrimenti, tenta un fallback usando l'IP per una posizione approssimativa.
+        try:
+            geo_response = requests.get(f"http://ip-api.com/json/{request.client_ip}")
+            geo_data = geo_response.json()
+            if geo_data.get("status") == "success":
+                citta = geo_data.get("city", "N/A")
+                regione = geo_data.get("regionName", "N/A")
+                location_info = f"\n[INFO POSIZIONE APPROSSIMATIVA UTENTE: Città={citta}, Regione={regione}]"
+        except requests.RequestException:
+            # In caso di errore nella chiamata all'API di geolocalizzazione, prosegue senza.
+            pass
+
+    # Aggiunge le informazioni di posizione, se trovate, al messaggio dell'utente.
+    if location_info:
+        contenuto_utente += location_info
+    
+    # Aggiorna la cronologia della conversazione con il messaggio completo dell'utente.
+    storico_chat.append(Messaggio(role="user", content=contenuto_utente))
+    
+    # Prepara il payload per il modello AI, includendo l'intera cronologia.
+    payload = RichiestaOllama(messages=storico_chat)
+    
+    try:
+        # Invia la richiesta al servizio del modello AI (Ollama).
+        response = requests.post(OLLAMA_API_URL, json=payload.model_dump(), timeout=180.0)
+        response.raise_for_status()  # Solleva un'eccezione per errori HTTP (es. 4xx, 5xx).
+        
+        # Estrae, valida e aggiunge la risposta del modello allo storico.
+        risposta_ollama = RispostaOllama(**response.json())
+        messaggio_ai = risposta_ollama.message
+        storico_chat.append(messaggio_ai)
+        
+        return messaggio_ai
+    except requests.RequestException as e:
+        # Gestisce errori di rete o di comunicazione con il servizio AI.
+        raise HTTPException(status_code=503, detail=f"Errore di comunicazione con il modello AI: {e}")
+
+
+@app.post("/reset")
+def reset_chat_history():
+    """
+    Endpoint per resettare la cronologia della chat, riportandola
+    allo stato iniziale con il solo prompt di sistema.
+    """
+    # Svuota la lista dello storico chat.
+    storico_chat.clear()
+    # Re-inizializza lo storico con il prompt di sistema di base.
+    storico_chat.append(Messaggio(role="system", content=PROMPT_DI_SISTEMA))
+    
+    return {"status": "success", "message": "Cronologia chat resettata."}
 
 @app.post("/register/paziente", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["Registrazione"])
 async def register_paziente(paziente: PazienteRegisration) -> UserOut:
