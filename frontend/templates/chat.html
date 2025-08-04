@@ -10,7 +10,14 @@
         .user-message { background-color: #007bff; color: white; align-self: flex-end; }
         .assistant-message { background-color: #e9e9eb; color: black; align-self: flex-start; }
         #chat-form { display: flex; }
-        #chatInput { flex-grow: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; }
+        #chatInput { 
+            flex-grow: 1; 
+            padding: 10px; 
+            border-radius: 20px; 
+            border: 1px solid #ccc;
+            /* 1. Aggiunto per impedire il ridimensionamento */
+            resize: none; 
+        }
         #chat-form button { 
             padding: 10px 20px; 
             margin-left: 10px; 
@@ -20,9 +27,8 @@
             color: white; 
             cursor: pointer; 
         }
-        /* Aggiungi uno stile per il bottone di reset */
         #reset-button {
-            background-color: #6c757d; /* Un colore diverso per distinguerlo */
+            background-color: #6c757d;
         }
     </style>
 </head>
@@ -36,7 +42,6 @@
     <form id="chat-form">
         <textarea id="chatInput" placeholder="Scrivi qui il tuo messaggio..." rows="1"></textarea>
         <button type="submit">Invia</button>
-        <!-- 1. Aggiungi il pulsante Reset -->
         <button type="button" id="reset-button">Reset</button>
     </form>
     
@@ -47,7 +52,6 @@
         const chatInput = document.getElementById('chatInput');
         const chatWindow = document.getElementById('chat-window');
         const geoStatus = document.getElementById('geo-status');
-        // 2. Ottieni il riferimento al nuovo pulsante
         const resetButton = document.getElementById('reset-button');
 
         let userLocation = null;
@@ -69,6 +73,18 @@
         function errorePosizione(errore) {
             geoStatus.textContent = `⚠️ Impossibile ottenere la posizione. I risultati non saranno geolocalizzati.`;
         }
+
+        /* * 2. Aggiunto per gestire l'invio con il tasto Invio.
+         * Permette di andare a capo con Shift + Invio.
+         */
+        chatInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                // Previene il comportamento di default (andare a capo)
+                event.preventDefault();
+                // Simula il click sul bottone di invio
+                chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+            }
+        });
 
         // --- GESTIONE INVIO MESSAGGI CHAT ---
         chatForm.addEventListener('submit', async (event) => {
@@ -97,22 +113,17 @@
             }
         });
         
-        // 3. Aggiungi l'event listener per il pulsante di reset
+        // --- GESTIONE RESET ---
         resetButton.addEventListener('click', async () => {
             try {
-                const response = await fetch('/reset', {
-                    method: 'POST'
-                });
+                const response = await fetch('/reset', { method: 'POST' });
 
                 if (!response.ok) {
                     throw new Error(`Errore durante il reset: ${response.statusText}`);
                 }
                 
-                // Pulisce la finestra della chat
                 chatWindow.innerHTML = '';
-                // Ripristina il messaggio di benvenuto
                 appendMessage('Ciao! Sono il tuo assistente. Quando inizierai a scrivere, ti chiederò la posizione per aiutarti a trovare gli specialisti più vicini a te.', 'assistant');
-                // Opzionale: resetta anche lo stato della geolocalizzazione
                 geoStatus.textContent = '';
 
             } catch (error) {
@@ -130,3 +141,5 @@
             chatWindow.scrollTop = chatWindow.scrollHeight;
         }
     </script>
+</body>
+</html>

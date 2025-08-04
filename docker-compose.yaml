@@ -34,13 +34,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
   # Servizio di backend (precedentemente logic_api)
   backend:
@@ -74,7 +67,3 @@ services:
       - "8000:8000"
     depends_on:
       - backend
-
-volumes:
-  mariadb_data:
-  ollama_data:
