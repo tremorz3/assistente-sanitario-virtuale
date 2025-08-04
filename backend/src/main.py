@@ -1,154 +1,30 @@
 import requests
 import os
-from fastapi import FastAPI, HTTPException, status 
-from pydantic import BaseModel, Field, EmailStr 
-from typing import Optional, List, Literal, Dict
-from datetime import datetime, timedelta, timezone
+from fastapi import FastAPI, HTTPException, status
+from typing import List
 
-# Libreria per la gestione delle password
-from passlib.context import CryptContext
-# Libreria per la gestione dei token JWT
-from jose import JWTError, jwt
+# Import dalla cartella utils
+from utils.database import get_db_connection, close_db_resources
+from utils.models import (
+    PazienteRegisration, MedicoRegistration, UserLogin, UserOut,
+    SpecializzazioneOut, Token, Messaggio, RichiestaChat, RichiestaOllama, RispostaOllama
+)
+from utils.auth import pwd_context, create_access_token
+from utils.chat_setup import storico_chat, reset_chat 
 
 # Import per il database
 import mariadb
-from database import get_db_connection, close_db_resources
 
 app = FastAPI(
     title="Assistente Virtuale Sanitario API",
     description="API per la gestione dell'orientamento sanitario, autenticazione e servizi correlati.",
 )
 
-# Definizione delle costanti per la gestione dei token JWT
-SECRET_KEY = os.getenv("SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
-
-# Configurazione per l'hashing delle password
-'''
-Viene utilizzato l'algoritmo bcrypt per l'hashing delle password, al posto di SHA256, per una questione di sicurezza, in quanto bcrypt è più lento 
-nell'hashing, mitigando attacchi tramite rainbow tables.
-'''
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Definizione dei modelli Pydantic dei dati
-
-# Modello per i token di login
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-class PazienteRegisration(BaseModel):
-    """
-    Schema Pydantic per i dati di registrazione di un nuovo paziente.
-    """
-    email: EmailStr = Field(..., example="mario.rossi@example.com", description="Indirizzo email del paziente (username).")
-    password: str = Field(..., min_length=8, example="password123", description="Password scelta dal paziente (minimo 8 caratteri).")
-    nome: str = Field(..., min_length=1, max_length=100, example="Mario", description="Nome del paziente.")
-    cognome: str = Field(..., min_length=1, max_length=100, example="Rossi", description="Cognome del paziente.")
-    telefono: str = Field(..., min_length=10, max_length=10, example="1234567890", description="Numero di telefono del paziente.")
-
-class MedicoRegistration(BaseModel):
-    """
-    Schema Pydantic per i dati di registrazione di un nuovo medico.
-    """
-    email: EmailStr = Field(..., example="mario.rossi@example.com", description="Indirizzo email del medico (username).")
-    password: str = Field(..., min_length=8, example="password123", description="Password scelta dal medico (minimo 8 caratteri).")
-    nome: str = Field(..., min_length=1, max_length=100, example="Mario", description="Nome del medico.")
-    cognome: str = Field(..., min_length=1, max_length=100, example="Rossi", description="Cognome del medico.")
-    citta: str = Field(..., min_length=1, max_length=100, example="Roma", description="Città di residenza/lavoro del medico.")
-    telefono: str = Field(..., min_length=10, max_length=10, example="1234567890", description="Numero di telefono del medico.")
-    ordine_iscrizione: str = Field(..., min_length=1, max_length=255, example="Ordine dei Medici di Roma", description="Ordine professionale a cui il medico è iscritto (es. Ordine dei Medici di Roma).")
-    numero_iscrizione: str = Field(..., min_length=1, max_length=50, example="12345", description="Numero di iscrizione all'ordine professionale del medico.")
-    provincia_iscrizione: str = Field(..., min_length=1, max_length=50, example="Roma", description="Provincia di iscrizione all'ordine professionale del medico.")
-    specializzazione_id: int = Field(..., example=10,description="ID della specializzazione principale del medico (riferimento a Specializzazioni).")
-
-class UserLogin(BaseModel):
-    """
-    Schema Pydantic per i dati di accesso (login) di un utente.
-    """
-    email: EmailStr = Field(..., example="utente@example.com", description="Email dell'utente.")
-    password: str = Field(..., description="Password dell'utente.")
-
-# Modelli di risposta API (Output):
-
-# Modello per la risposta di Specializzazione (utile per recuperare Specializzazioni)
-class SpecializzazioneOut(BaseModel):
-    """
-    Schema Pydantic per la rappresentazione di una specializzazione.
-    Utilizzato per la risposta degli endpoint.
-    """
-    id: int
-    nome: str
-
-class UserOut(BaseModel):
-    """
-    Schema Pydantic per i dati utente da restituire dopo registrazione/login.
-    NON include la password_hash per sicurezza.
-    """
-    id: int = Field(..., description="ID unico dell'utente.")
-    email: EmailStr = Field(..., description="Email dell'utente.")
-    tipo_utente: str = Field(..., description="Tipo di utente ('medico' o 'paziente').")
-    token: Optional[Token] = Field(None, description="Token di accesso JWT. (Opzionale)")
-
-class Messaggio(BaseModel):
-    role: Literal["system", "user", "assistant"]
-    content: str
-
-class RichiestaChat(BaseModel):
-    domanda: str
-    location: Optional[Dict[str, float]] = None
-    client_ip: Optional[str] = None # Manteniamo la logica dell'IP fallback
-
-class RichiestaOllama(BaseModel):
-    model: str = "alibayram/medgemma:4b"
-    messages: List[Messaggio]
-    stream: bool = False
-
-class RispostaOllama(BaseModel):
-    message: Messaggio
-
-def leggi_prompt_da_file(percorso_file: str) -> str:
-    with open(percorso_file, 'r', encoding='utf-8') as f:
-        return f.read().strip()
-    
-PROMPT_DI_SISTEMA = leggi_prompt_da_file("prompt.txt")
-
-storico_chat: List[Messaggio] = [
-    Messaggio(role="system", content=PROMPT_DI_SISTEMA)
-]
-
-# Legge l'URL di Ollama dalla variabile d'ambiente impostata nel docker-compose.yml
-OLLAMA_API_URL = os.getenv("OLLAMA_API_URL")
-'''
-La Secret Key è contenuta nel file .env ed è stata generata col comando `openssl rand -hex 32`, quindi è una stringa casuale di 32 byte (256 bit).
-L'algoritmo di hashing è impostato su HS256 e il tempo di scadenza del token è impostato nel file .env.
-'''
-# Funzione per creare un token JWT
-def create_access_token(data: dict) -> str:
-    '''
-    Args:
-        data (dict): Dati da includere nel token JWT, come email, ID utente e tipo utente.
-    Returns:
-        str: Token JWT codificato.
-    '''
-    # Copia i dati di login per evitare modifiche indesiderate ai dati dell'utente
-    to_encode: dict = data.copy() 
-
-    # Imposta la data di scadenza del token
-    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-
-    # Crea il token JWT utilizzando la chiave segreta e l'algoritmo specificato
-    encoded_jwt: str = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-    return encoded_jwt
+OLLAMA_API_URL: str = os.getenv("OLLAMA_API_URL")
 
 # Endpoints dell'API
-"""
-Nota: "async" permette a una funzione di "sospendersi" in attesa che un'operazione che richiede tempo sia completata, 
-e nel frattempo, il programma può eseguire altro codice.
-"""
+# Nota: "async" permette a una funzione di "sospendersi" in attesa che un'operazione che richiede tempo sia completata,
+# e nel frattempo, il programma può eseguire altro codice.
 
 @app.get("/")
 async def read_root():
@@ -191,6 +67,8 @@ def chat_con_ai(request: RichiestaChat):
     
     # Aggiorna la cronologia della conversazione con il messaggio completo dell'utente.
     storico_chat.append(Messaggio(role="user", content=contenuto_utente))
+    print(f"Messaggio utente: {contenuto_utente}")
+    print(f"Storico chat attuale: {storico_chat}")
     
     # Prepara il payload per il modello AI, includendo l'intera cronologia.
     payload = RichiestaOllama(messages=storico_chat)
@@ -214,14 +92,9 @@ def chat_con_ai(request: RichiestaChat):
 @app.post("/reset")
 def reset_chat_history():
     """
-    Endpoint per resettare la cronologia della chat, riportandola
-    allo stato iniziale con il solo prompt di sistema.
+    Resetta la cronologia della chat chiamando la funzione dedicata.
     """
-    # Svuota la lista dello storico chat.
-    storico_chat.clear()
-    # Re-inizializza lo storico con il prompt di sistema di base.
-    storico_chat.append(Messaggio(role="system", content=PROMPT_DI_SISTEMA))
-    
+    reset_chat()
     return {"status": "success", "message": "Cronologia chat resettata."}
 
 @app.post("/register/paziente", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["Registrazione"])
