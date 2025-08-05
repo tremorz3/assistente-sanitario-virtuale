@@ -30,6 +30,10 @@ CREATE TABLE IF NOT EXISTS Medici (
     ordine_iscrizione VARCHAR(255) NOT NULL,
     numero_iscrizione VARCHAR(50) NOT NULL,
     provincia_iscrizione VARCHAR(50) NOT NULL,
+    -- Campi impostati inizialente a NULL per la fase di sviluppo
+    indirizzo_studio VARCHAR(255) NULL,
+    latitudine DECIMAL(10, 8) NULL,
+    longitudine DECIMAL(11, 8) NULL,
     FOREIGN KEY (utente_id) REFERENCES Utenti(id) ON DELETE CASCADE,
     FOREIGN KEY (specializzazione_id) REFERENCES Specializzazioni(id)
 );
