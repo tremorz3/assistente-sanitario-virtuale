@@ -27,6 +27,7 @@ class MedicoRegistration(BaseModel):
     numero_iscrizione: str = Field(..., min_length=1, max_length=50, example="12345", description="Numero di iscrizione all'ordine professionale del medico.")
     provincia_iscrizione: str = Field(..., min_length=1, max_length=50, example="Roma", description="Provincia di iscrizione all'ordine professionale del medico.")
     specializzazione_id: int = Field(..., example=10,description="ID della specializzazione principale del medico (riferimento a Specializzazioni).")
+    indirizzo_studio: str = Field(..., min_length=5, max_length=255, example="Via San Giovanni 1, 04019, Terracina (LT)", description="Indirizzo dello studio medico.")
 
 # Modelli per autenticazione e risposte Utente
 class Token(BaseModel):
@@ -92,3 +93,9 @@ class RispostaOllama(BaseModel):
     """
     message: Messaggio
 
+class AddressSuggestion(BaseModel):
+    """
+    Rappresenta un singolo suggerimento di indirizzo per l'autocomplete.
+    """
+    display_address: str  # L'indirizzo formattato e pulito da mostrare all'utente
+    validation_address: str # L'indirizzo originale di Nominatim, per la validazione

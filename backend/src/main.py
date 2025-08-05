@@ -1,16 +1,18 @@
 import requests
 import os
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Query
 from typing import List
 
 # Import dalla cartella utils
 from utils.database import get_db_connection, close_db_resources
 from utils.models import (
     PazienteRegisration, MedicoRegistration, UserLogin, UserOut,
-    SpecializzazioneOut, Token, Messaggio, RichiestaChat, RichiestaOllama, RispostaOllama
+    SpecializzazioneOut, Token, Messaggio, RichiestaChat, RichiestaOllama, RispostaOllama,
+    AddressSuggestion
 )
 from utils.auth import pwd_context, create_access_token
-from utils.chat_setup import storico_chat, reset_chat 
+from utils.chat_setup import storico_chat, reset_chat
+from utils.geocoding import get_coordinates, get_address_suggestions
 
 # Import per il database
 import mariadb
@@ -97,6 +99,14 @@ def reset_chat_history():
     reset_chat()
     return {"status": "success", "message": "Cronologia chat resettata."}
 
+@app.get("/api/autocomplete-address", response_model=List[AddressSuggestion], tags=["Utilities"])
+async def autocomplete_address(query: str = Query(..., min_length=3)):
+    """
+    Fornisce suggerimenti di indirizzi per l'autocomplete.
+    """
+    suggestions = get_address_suggestions(query)
+    return suggestions
+
 @app.post("/register/paziente", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["Registrazione"])
 async def register_paziente(paziente: PazienteRegisration) -> UserOut:
     '''
@@ -159,6 +169,20 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
     Raises:
         HTTPException: Se si verifica un errore durante la registrazione.
     '''
+    # Logica di geocodifica per l'indirizzo dello studio del medico
+    lat = None
+    lon = None
+    if medico.indirizzo_studio:
+        coordinates = get_coordinates(medico.indirizzo_studio)
+        if coordinates:
+            lat, lon = coordinates
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"L'indirizzo dello studio '{medico.indirizzo_studio}' non è stato trovato o non è valido. Riprova con un indirizzo più preciso."
+            )
+
+
     conn = None
     cursor = None
 
@@ -188,12 +212,14 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
         query_medico = """
             INSERT INTO Medici (
                 utente_id, specializzazione_id, nome, cognome, citta, telefono, 
-                ordine_iscrizione, numero_iscrizione, provincia_iscrizione
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ordine_iscrizione, numero_iscrizione, provincia_iscrizione, 
+                indirizzo_studio, latitudine, longitudine
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         cursor.execute(query_medico, (
             nuovo_utente_id, medico.specializzazione_id, medico.nome, medico.cognome, medico.citta,
-            medico.telefono, medico.ordine_iscrizione, medico.numero_iscrizione, medico.provincia_iscrizione
+            medico.telefono, medico.ordine_iscrizione, medico.numero_iscrizione, medico.provincia_iscrizione,
+            medico.indirizzo_studio, lat, lon
         ))
 
         conn.commit()

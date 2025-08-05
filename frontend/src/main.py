@@ -1,8 +1,8 @@
 import os
 from datetime import date
-from typing import Dict, Any
+from typing import Dict, Any, List
 
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
@@ -19,6 +19,20 @@ def serve_chat_page(request: Request):
     """Serve la pagina HTML iniziale."""
     return templates.TemplateResponse("chat.html", {"request": request})
 
+@app.get("/api/autocomplete-address")
+def proxy_autocomplete_address(query: str = Query(..., min_length=3)):
+    """
+    Endpoint proxy che inoltra la richiesta di autocomplete al backend
+    e restituisce i suggerimenti al client.
+    """
+    # Prepara i parametri per la funzione helper che chiama il backend
+    api_params = APIParams(
+        method="GET",
+        endpoint=f"/api/autocomplete-address?query={query}" # Passiamo la query all'endpoint del backend
+    )
+
+    # Chiama l'API di logica e restituisce il risultato al browser
+    return call_api(params=api_params)
 
 @app.get("/pagina-login", response_class=HTMLResponse)
 async def get_login_page(request: Request, success:bool = False):
@@ -148,6 +162,7 @@ async def post_medico_register_page(
     nome: str = Form(...),
     cognome: str = Form(...),
     citta: str = Form(...),
+    indirizzo_studio: str = Form(...),
     telefono: str = Form(...),
     specializzazione_id: int = Form(...),
     ordine_iscrizione: str = Form(...),
@@ -187,7 +202,8 @@ async def post_medico_register_page(
             "numero_iscrizione": numero_iscrizione,
             "provincia_iscrizione": provincia_iscrizione,
             "email": email,
-            "password": password
+            "password": password,
+            "indirizzo_studio": indirizzo_studio
         }
         
         register_params = APIParams(
