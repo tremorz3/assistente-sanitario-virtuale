@@ -44,11 +44,9 @@ def get_coordinates(address: str) -> Optional[Tuple[float, float]]:
             return None
             
     except (requests.RequestException, IndexError, KeyError, ValueError) as e:
-        # Gestisce errori di rete, JSON malformato, dati mancanti, etc.
         print(f"Errore durante la geocodifica dell'indirizzo '{address}': {e}")
         return None
     
-# Sostituisci l'intera funzione
 def get_address_suggestions(query: str) -> List[AddressSuggestion]:
     """
     Ottiene una lista di suggerimenti di indirizzi basati su una query parziale.

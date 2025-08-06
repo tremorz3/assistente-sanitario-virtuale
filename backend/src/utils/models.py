@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Literal, Dict
 
@@ -99,3 +100,93 @@ class AddressSuggestion(BaseModel):
     """
     display_address: str  # L'indirizzo formattato e pulito da mostrare all'utente
     validation_address: str # L'indirizzo originale di Nominatim, per la validazione
+
+# Modelli per la tabella Disponibilità
+class DisponibilitaBase(BaseModel):
+    """
+    Schema base per una fascia oraria di disponibilità. Contiene i campi comuni per la creazione e l'output.
+    """
+    medico_id: int = Field(..., description="ID del medico che offre la disponibilità.")
+    data_ora_inizio: datetime = Field(..., description="Inizio della fascia oraria disponibile.")
+    data_ora_fine: datetime = Field(..., description="Fine della fascia oraria disponibile.")
+
+class DisponibilitaCreate(DisponibilitaBase):
+    """
+    Schema utilizzato per creare una nuova disponibilità via API. Usato per validare i dati in ingresso.
+    """
+    pass
+
+class DisponibilitaOut(DisponibilitaBase):
+    """
+    Schema per restituire una disponibilità via API, include l'ID e lo stato.L'attributo orm_mode = True è una configurazione fondamentale che 
+    abilita la compatibilità con gli Object-Relational Mapping (ORM) come SQLAlchemy. Quando questa opzione è attivata, Pydantic è in grado di 
+    leggere i dati non solo dai tradizionali dizionari Python, ma anche direttamente dagli oggetti ORM del database. Questo significa che il 
+    modello può essere popolato automaticamente a partire da un'istanza di una tabella del database senza dover convertire manualmente l'oggetto 
+    ORM in un dizionario.
+    """
+    id: int
+    is_prenotato: bool
+
+    class Config:
+        orm_mode = True
+
+# Modelli per la tabella Prenotazione
+class PrenotazioneBase(BaseModel):
+    """
+    Schema base per una prenotazione. Contiene i campi comuni per la creazione e l'output.
+    """
+    disponibilita_id: int = Field(..., description="ID della fascia oraria che si sta prenotando.")
+    paziente_id: int = Field(..., description="ID del paziente che effettua la prenotazione.")
+    note_paziente: Optional[str] = Field(None, description="Note opzionali del paziente per la visita.")
+
+class PrenotazioneCreate(PrenotazioneBase):
+    """
+    Schema utilizzato per creare una nuova prenotazione via API. Usato per validare i dati in ingresso.
+    """
+    pass
+
+class PrenotazioneOut(PrenotazioneBase):
+    """
+    Schema per restituire i dati di una prenotazione, include lo stato e la data.
+    """
+    id: int
+    data_prenotazione: datetime
+    stato: Literal['Confermata', 'Completata', 'Cancellata']
+
+    class Config:
+        orm_mode = True
+
+class PrenotazioneUpdate(BaseModel):
+    """
+    Schema utilizzato per aggiornare lo stato di una prenotazione.
+    Accetta solo i valori permessi per lo stato. Questo modello garantisce che tramite l'API si possa aggiornare solo il campo stato di una
+    prenotazione e che i valori accettati siano limitati a "Completata" o "Cancellata", prevenendo l'invio di dati non validi.
+    """
+    stato: Literal['Completata', 'Cancellata']
+
+# Modelli per la tabella Valutazione
+class ValutazioneBase(BaseModel):
+    """
+    Schema base per una valutazione. Contiene i campi comuni per la creazione e l'output.
+    """
+    prenotazione_id: int = Field(..., description="ID della prenotazione da valutare.")
+    paziente_id: int = Field(..., description="ID del paziente che lascia la valutazione.")
+    medico_id: int = Field(..., description="ID del medico che viene valutato.")
+    punteggio: int = Field(..., ge=1, le=5, description="Punteggio da 1 a 5.")
+    commento: Optional[str] = Field(None, max_length=1000, description="Commento testuale opzionale.")
+
+class ValutazioneCreate(ValutazioneBase):
+    """
+    Schema per creare una nuova valutazione via API. Usato per validare i dati in ingresso.
+    """
+    pass
+
+class ValutazioneOut(ValutazioneBase):
+    """
+    Schema per restituire i dati di una valutazione.
+    """
+    id: int
+    data_valutazione: datetime
+
+    class Config:
+        orm_mode = True
