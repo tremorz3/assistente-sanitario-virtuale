@@ -3,8 +3,9 @@ from typing import List
 import mariadb
 
 # Import dei modelli e delle utility necessarie
-from utils.models import PrenotazioneCreate, PrenotazioneOut, PrenotazioneUpdate
+from utils.models import PrenotazioneCreate, PrenotazioneOut, PrenotazioneUpdate, UserOut
 from utils.database import get_db_connection, close_db_resources
+from utils.auth import get_current_user
 
 router = APIRouter(
     prefix="/prenotazioni",  # Tutti gli URL di questo file inizieranno con /prenotazioni
@@ -12,9 +13,9 @@ router = APIRouter(
 )
 
 @router.post("", response_model=PrenotazioneOut, status_code=status.HTTP_201_CREATED)
-async def crea_prenotazione(prenotazione: PrenotazioneCreate):
+async def crea_prenotazione(prenotazione: PrenotazioneCreate, current_user: UserOut = Depends(get_current_user)):
     """
-    Crea una nuova prenotazione per una fascia oraria disponibile.
+    Crea una nuova prenotazione per una fascia oraria disponibile e per un paziente autenticato.
     
     Questa operazione è svolta in una transazione per garantire l'integrità dei dati nel db:
     1. Verifica che la disponibilità esista e sia libera.
@@ -35,6 +36,9 @@ async def crea_prenotazione(prenotazione: PrenotazioneCreate):
             - 409: Se la disponibilità è già stata prenotata.
             - 500: Per errori interni del database.
     """
+    if current_user.tipo_utente != 'paziente':
+        raise HTTPException(status_code=403, detail="Azione non permessa. Solo i pazienti possono creare prenotazioni.")
+
     conn = None
     cursor = None
     try:
@@ -43,6 +47,14 @@ async def crea_prenotazione(prenotazione: PrenotazioneCreate):
         # fino a quando non chiamiamo conn.commit() o conn.rollback().
         conn.begin()
         cursor = conn.cursor(dictionary=True)
+
+        # Cerca il profilo Paziente usando l'ID dell'Utente dal token.
+        cursor.execute("SELECT id FROM Pazienti WHERE utente_id = ?", (current_user.id,))
+        paziente_record = cursor.fetchone()
+        if not paziente_record:
+            raise HTTPException(status_code=404, detail="Profilo paziente non trovato per l'utente autenticato.")
+        
+        paziente_id = paziente_record['id']
 
         # 1. Controlla e blocca la riga di disponibilità per l'aggiornamento.
         # 'FOR UPDATE' è fondamentale per prevenire che due utenti prenotino
@@ -66,7 +78,7 @@ async def crea_prenotazione(prenotazione: PrenotazioneCreate):
             INSERT INTO Prenotazioni (disponibilita_id, paziente_id, note_paziente)
             VALUES (?, ?, ?)
         """
-        cursor.execute(query_insert, (prenotazione.disponibilita_id, prenotazione.paziente_id, prenotazione.note_paziente))
+        cursor.execute(query_insert, (prenotazione.disponibilita_id, paziente_id, prenotazione.note_paziente))
         
         nuova_prenotazione_id = cursor.lastrowid
 
@@ -87,10 +99,10 @@ async def crea_prenotazione(prenotazione: PrenotazioneCreate):
     finally:
         close_db_resources(conn, cursor)
 
-@router.get("/paziente/{paziente_id}", response_model=List[PrenotazioneOut])
-async def get_prenotazioni_paziente(paziente_id: int):
+@router.get("/paziente/me", response_model=List[PrenotazioneOut])
+async def get_my_prenotazioni_paziente(current_user: UserOut = Depends(get_current_user)) -> List[PrenotazioneOut]:
     """
-    Recupera la lista di tutte le prenotazioni effettuate da un specifico paziente.
+    Recupera la lista di tutte le prenotazioni effettuate dal paziente loggato.
     
     Args:
         paziente_id (int): L'ID del paziente.
@@ -102,16 +114,22 @@ async def get_prenotazioni_paziente(paziente_id: int):
             - 404: Se il paziente non esiste.
             - 500: Per errori interni del database.
     """
+    if current_user.tipo_utente != 'paziente':
+        raise HTTPException(status_code=403, detail="Accesso negato. Solo i pazienti possono vedere le proprie prenotazioni.")
+
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Verifichiamo prima che il paziente esista.
-        cursor.execute("SELECT id FROM Pazienti WHERE id = ?", (paziente_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Paziente non trovato.")
+        # Verifica esistenza del Paziente
+        cursor.execute("SELECT id FROM Pazienti WHERE utente_id = ?", (current_user.id,))
+        paziente_record = cursor.fetchone()
+        if not paziente_record:
+            raise HTTPException(status_code=404, detail="Profilo paziente non trovato.")
+        
+        paziente_id = paziente_record['id']
         
         # Query per selezionare tutte le prenotazioni di un paziente
         query = "SELECT * FROM Prenotazioni WHERE paziente_id = ? ORDER BY data_prenotazione DESC"
@@ -128,10 +146,10 @@ async def get_prenotazioni_paziente(paziente_id: int):
     finally:
         close_db_resources(conn, cursor)
 
-@router.get("/medico/{medico_id}", response_model=List[PrenotazioneOut])
-async def get_prenotazioni_medico(medico_id: int):
+@router.get("/medico/me", response_model=List[PrenotazioneOut])
+async def get_my_prenotazioni_medico(current_user: UserOut = Depends(get_current_user)) -> List[PrenotazioneOut]:
     """
-    Recupera la lista di tutte le prenotazioni associate a uno specifico medico.
+    Recupera la lista di tutte le prenotazioni associate a al medico loggato.
     Questo richiede un JOIN attraverso la tabella Disponibilita.
 
     Args:
@@ -140,6 +158,9 @@ async def get_prenotazioni_medico(medico_id: int):
     Returns:
         List[PrenotazioneOut]: Una lista di oggetti prenotazione.
     """
+    if current_user.tipo_utente != 'medico':
+        raise HTTPException(status_code=403, detail="Accesso negato. Solo i medici possono vedere le proprie prenotazioni.")
+
     conn = None
     cursor = None
     try:
@@ -147,9 +168,12 @@ async def get_prenotazioni_medico(medico_id: int):
         cursor = conn.cursor(dictionary=True)
 
         # Verifichiamo prima che il medico esista.
-        cursor.execute("SELECT id FROM Medici WHERE id = ?", (medico_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Medico non trovato.")
+        cursor.execute("SELECT id FROM Medici WHERE utente_id = ?", (current_user.id,))
+        medico_record = cursor.fetchone()
+        if not medico_record:
+            raise HTTPException(status_code=404, detail="Profilo medico non trovato.")
+            
+        medico_id = medico_record['id']
         
         # Query che unisce Prenotazioni e Disponibilita
         # per trovare gli appuntamenti di un medico.
@@ -173,11 +197,20 @@ async def get_prenotazioni_medico(medico_id: int):
     finally:
         close_db_resources(conn, cursor)
 
+# Introduce una logica di autorizzazione più complessa, dove diversi ruoli (medico e paziente) possono compiere la 
+# stessa azione, ma con permessi differenti.
 @router.patch("/{prenotazione_id}", response_model=PrenotazioneOut)
-async def aggiorna_stato_prenotazione(prenotazione_id: int, update_data: PrenotazioneUpdate):
+async def aggiorna_stato_prenotazione(
+    prenotazione_id: int, 
+    update_data: PrenotazioneUpdate,
+    current_user: UserOut = Depends(get_current_user)
+):
     """
     Aggiorna lo stato di una prenotazione esistente.
     Permette di marcare una prenotazione come 'Completata' o 'Cancellata'.
+    Regole di autorizzazione:
+    - Stato 'Completata': Può essere impostato solo dal medico associato alla visita.
+    - Stato 'Cancellata': Può essere impostato dal paziente che ha prenotato o dal medico.
 
     Args:
         prenotazione_id (int): L'ID della prenotazione da aggiornare.
@@ -199,8 +232,17 @@ async def aggiorna_stato_prenotazione(prenotazione_id: int, update_data: Prenota
         conn.begin()  # Inizia una transazione nel database
         cursor = conn.cursor(dictionary=True)
 
-        # Controlla lo stato attuale della prenotazione
-        cursor.execute("SELECT * FROM Prenotazioni WHERE id = ? FOR UPDATE", (prenotazione_id,))
+        # Recupera i dati della prenotazione e le informazioni collegate per i controlli
+        query_prenotazione = """
+            SELECT 
+                p.id, p.stato, p.paziente_id,
+                d.medico_id
+            FROM Prenotazioni p
+            JOIN Disponibilita d ON p.disponibilita_id = d.id
+            WHERE p.id = ?
+            FOR UPDATE
+        """
+        cursor.execute(query_prenotazione, (prenotazione_id,))
         prenotazione = cursor.fetchone()
 
         if not prenotazione:
@@ -212,19 +254,42 @@ async def aggiorna_stato_prenotazione(prenotazione_id: int, update_data: Prenota
                 status_code=409,
                 detail=f"La prenotazione è già nello stato finale '{prenotazione['stato']}' e non può essere modificata."
             )
+        
+        # Recupera il profilo specifico (Medico o Paziente) dell'utente autenticato
+        user_profile_id = None
+        if current_user.tipo_utente == 'medico':
+            cursor.execute("SELECT id FROM Medici WHERE utente_id = ?", (current_user.id,))
+            medico_record = cursor.fetchone()
+            if medico_record:
+                user_profile_id = medico_record['id']
+        elif current_user.tipo_utente == 'paziente':
+            cursor.execute("SELECT id FROM Pazienti WHERE utente_id = ?", (current_user.id,))
+            paziente_record = cursor.fetchone()
+            if paziente_record:
+                user_profile_id = paziente_record['id']
+
+        # CASO 1: Aggiornamento a 'Completata'
+        if update_data.stato == 'Completata':
+            if current_user.tipo_utente != 'medico' or prenotazione['medico_id'] != user_profile_id:
+                raise HTTPException(status_code=403, detail="Azione non permessa. Solo il medico della visita può completarla.")
+        
+        # CASO 2: Aggiornamento a 'Cancellata'
+        elif update_data.stato == 'Cancellata':
+            is_paziente_proprietario = (current_user.tipo_utente == 'paziente' and prenotazione['paziente_id'] == user_profile_id)
+            is_medico_proprietario = (current_user.tipo_utente == 'medico' and prenotazione['medico_id'] == user_profile_id)
+            
+            if not (is_paziente_proprietario or is_medico_proprietario):
+                raise HTTPException(status_code=403, detail="Azione non permessa. Non puoi cancellare questa prenotazione.")
+            
+            # Se la prenotazione viene cancellata, liberiamo lo slot
+            cursor.execute(
+                "UPDATE Disponibilita SET is_prenotato = FALSE WHERE id = (SELECT disponibilita_id FROM Prenotazioni WHERE id = ?)",
+                (prenotazione_id,)
+            )
 
         # Aggiorna lo stato della prenotazione
         query_update = "UPDATE Prenotazioni SET stato = ? WHERE id = ?"
         cursor.execute(query_update, (update_data.stato, prenotazione_id))
-
-        # Logica aggiuntiva: se la prenotazione viene cancellata, rendiamo nuovamente
-        # disponibile la fascia oraria corrispondente.
-        if update_data.stato == 'Cancellata':
-            cursor.execute(
-                "UPDATE Disponibilita SET is_prenotato = FALSE WHERE id = ?",
-                (prenotazione['disponibilita_id'],)
-            )
-
         conn.commit()
 
         # Recupera e restituisce la prenotazione aggiornata

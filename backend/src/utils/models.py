@@ -38,6 +38,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
+class TokenData(BaseModel):
+    """
+    Schema Pydantic per i dati contenuti all'interno di un token JWT.
+    """
+    email: Optional[str] = None
+    id: Optional[int] = None
+    tipo_utente: Optional[str] = None
+
 class UserLogin(BaseModel):
     """
     Schema Pydantic per i dati di accesso (login) di un utente.
@@ -106,13 +114,13 @@ class DisponibilitaBase(BaseModel):
     """
     Schema base per una fascia oraria di disponibilità. Contiene i campi comuni per la creazione e l'output.
     """
-    medico_id: int = Field(..., description="ID del medico che offre la disponibilità.")
     data_ora_inizio: datetime = Field(..., description="Inizio della fascia oraria disponibile.")
     data_ora_fine: datetime = Field(..., description="Fine della fascia oraria disponibile.")
 
 class DisponibilitaCreate(DisponibilitaBase):
     """
     Schema utilizzato per creare una nuova disponibilità via API. Usato per validare i dati in ingresso.
+    L'ID del medico viene recuperato automaticamente dal token di autenticazione.
     """
     pass
 
@@ -136,12 +144,12 @@ class PrenotazioneBase(BaseModel):
     Schema base per una prenotazione. Contiene i campi comuni per la creazione e l'output.
     """
     disponibilita_id: int = Field(..., description="ID della fascia oraria che si sta prenotando.")
-    paziente_id: int = Field(..., description="ID del paziente che effettua la prenotazione.")
     note_paziente: Optional[str] = Field(None, description="Note opzionali del paziente per la visita.")
 
 class PrenotazioneCreate(PrenotazioneBase):
     """
     Schema utilizzato per creare una nuova prenotazione via API. Usato per validare i dati in ingresso.
+    L'ID del paziente viene recuperato automaticamente dal token.
     """
     pass
 
@@ -170,14 +178,13 @@ class ValutazioneBase(BaseModel):
     Schema base per una valutazione. Contiene i campi comuni per la creazione e l'output.
     """
     prenotazione_id: int = Field(..., description="ID della prenotazione da valutare.")
-    paziente_id: int = Field(..., description="ID del paziente che lascia la valutazione.")
-    medico_id: int = Field(..., description="ID del medico che viene valutato.")
     punteggio: int = Field(..., ge=1, le=5, description="Punteggio da 1 a 5.")
     commento: Optional[str] = Field(None, max_length=1000, description="Commento testuale opzionale.")
 
 class ValutazioneCreate(ValutazioneBase):
     """
     Schema per creare una nuova valutazione via API. Usato per validare i dati in ingresso.
+    L'ID del paziente e del medico vengono recuperati automaticamente.
     """
     pass
 

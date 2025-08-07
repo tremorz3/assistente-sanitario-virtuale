@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 import mariadb
 
-from utils.models import DisponibilitaCreate, DisponibilitaOut
+from utils.models import DisponibilitaCreate, DisponibilitaOut, UserOut
 from utils.database import get_db_connection, close_db_resources
+from utils.auth import get_current_user
 
 router = APIRouter(
     prefix="/disponibilita",  # Prefisso per tutti gli URL di questo router
@@ -11,13 +12,14 @@ router = APIRouter(
 )
 
 # Endpoints per la gestione delle disponibilità dei medici
-@router.post("/medici/{medico_id}", response_model=DisponibilitaOut, status_code=status.HTTP_201_CREATED)
-async def crea_disponibilita(medico_id: int, disponibilita: DisponibilitaCreate):
+@router.post("", response_model=DisponibilitaOut, status_code=status.HTTP_201_CREATED)
+async def crea_disponibilita(disponibilita: DisponibilitaCreate, current_user: UserOut = Depends(get_current_user)):
     """
-    Permette a un medico di aggiungere una nuova fascia oraria di disponibilità. Nota: le fasce orarie devono essere contigue e non sovrapporsi 
-    ad altre prenotazioni. La logica per verificare se due intervalli di tempo si sovrappongono è la seguente: un nuovo intervallo 
-    (nuovo_inizio, nuova_fine) si sovrappone a un intervallo esistente (db_inizio, db_fine) se e solo se l'inizio del nuovo intervallo 
-    è precedente alla fine di quello esistente e la fine del nuovo intervallo è successiva all'inizio di quello esistente.
+    (Protetto) Permette a un medico autenticato di aggiungere una nuova fascia oraria.
+    L'ID del medico viene preso direttamente dal token JWT.
+    Nota: le fasce orarie devono essere contigue e non sovrapporsi ad altre prenotazioni. La logica per verificare se due intervalli di tempo si 
+    sovrappongono è la seguente: un nuovo intervallo (nuovo_inizio, nuova_fine) si sovrappone a un intervallo esistente (db_inizio, db_fine) se e 
+    solo se l'inizio del nuovo intervallo è precedente alla fine di quello esistente e la fine del nuovo intervallo è successiva all'inizio di quello esistente.
 
     Args:
         medico_id (int): L'ID del medico che aggiunge la disponibilità.
@@ -29,11 +31,24 @@ async def crea_disponibilita(medico_id: int, disponibilita: DisponibilitaCreate)
     Raises:
         HTTPException: Se il medico non esiste, se l'orario si sovrappone o se si verifica un errore nel database
     """
+    # Solo gli utenti di tipo 'medico' possono creare disponibilità.
+    if current_user.tipo_utente != 'medico':
+        raise HTTPException(status_code=403, detail="Azione non permessa. Solo i medici possono aggiungere disponibilità.")
+
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
+
+        # Cerca il profilo Medico usando l'ID dell'Utente dal token.
+        cursor.execute("SELECT id FROM Medici WHERE utente_id = ?", (current_user.id,))
+        medico_record = cursor.fetchone()
+        # Se non esiste un profilo medico per questo utente, solleva un errore.
+        if not medico_record:
+            raise HTTPException(status_code=404, detail="Profilo medico non trovato per l'utente autenticato.")
+        
+        medico_id = medico_record['id']
 
         # Controlla se il medico esiste
         cursor.execute("SELECT id FROM Medici WHERE id = ?", (medico_id,))
@@ -91,6 +106,7 @@ async def crea_disponibilita(medico_id: int, disponibilita: DisponibilitaCreate)
     finally:
         close_db_resources(conn, cursor)
 
+# L'endpoint GET rimane pubblico
 @router.get("/medici/{medico_id}", response_model=List[DisponibilitaOut])
 async def get_disponibilita_medico(medico_id: int, solo_libere: bool = True):
     """
@@ -129,10 +145,10 @@ async def get_disponibilita_medico(medico_id: int, solo_libere: bool = True):
         close_db_resources(conn, cursor)
 
 # Assunzione: un Medico non può cancellare uno slot di tempo se un Paziente lo ha già prenotato
-@router.delete("{disponibilita_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def cancella_disponibilita(disponibilita_id: int):
+@router.delete("/{disponibilita_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancella_disponibilita(disponibilita_id: int, current_user: UserOut = Depends(get_current_user)):
     """
-    Cancella una fascia oraria di disponibilità, solo se non è prenotata.
+    Cancella una fascia oraria di disponibilità, solo se non è prenotata e appartiene al medico autenticato. 
 
     Args:
         disponibilita_id (int): L'ID della disponibilità da cancellare.
@@ -143,6 +159,13 @@ async def cancella_disponibilita(disponibilita_id: int):
             - 409: Se la disponibilità è già stata prenotata e non può essere cancellata.
             - 500: Per errori interni del database.
     """
+    # Verifica che l'utente sia un medico.
+    if current_user.tipo_utente != 'medico':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Azione non permessa. Solo i medici possono cancellare disponibilità."
+        )
+
     
     conn = None
     cursor = None
@@ -150,8 +173,16 @@ async def cancella_disponibilita(disponibilita_id: int):
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
+        # Recupero profilo del medico per ottenere il suo ID specifico (Medici.id)
+        cursor.execute("SELECT id FROM Medici WHERE utente_id = ?", (current_user.id,))
+        medico_record = cursor.fetchone()
+        if not medico_record:
+            raise HTTPException(status_code=403, detail="Azione non permessa. Nessun profilo medico associato.")
+        
+        medico_id_autenticato = medico_record['id']
+
         # Controlla lo stato della disponibilità prima di cancellarla
-        cursor.execute("SELECT is_prenotato FROM Disponibilita WHERE id = ?", (disponibilita_id,))
+        cursor.execute("SELECT medico_id, is_prenotato FROM Disponibilita WHERE id = ?", (disponibilita_id,))
         disponibilita = cursor.fetchone()
         
         if not disponibilita:
@@ -159,6 +190,11 @@ async def cancella_disponibilita(disponibilita_id: int):
                 status_code=status.HTTP_404_NOT_FOUND, 
                 detail="Disponibilità non trovata."
             )
+        
+        # L'ID del medico proprietario dello slot deve corrispondere all'ID dell'utente nel token.
+        if disponibilita['medico_id'] != medico_id_autenticato:
+            raise HTTPException(status_code=403, detail="Azione non permessa. Non puoi cancellare la disponibilità di un altro medico.")
+
         
         # Impedisce la cancellazione se già prenotata
         if disponibilita['is_prenotato']:
