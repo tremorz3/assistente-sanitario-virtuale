@@ -1,10 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from typing import List
 import mariadb
 
-# Import dei modelli e delle utility necessarie
-from utils.models import ValutazioneCreate, ValutazioneOut
+# Import dei modelli, delle utility e della dipendenza di sicurezza
+from utils.models import ValutazioneCreate, ValutazioneOut, UserOut
 from utils.database import get_db_connection, close_db_resources
+from utils.auth import get_current_user
 
 router = APIRouter(
     prefix="/valutazioni",
@@ -12,48 +13,55 @@ router = APIRouter(
 )
 
 @router.post("", response_model=ValutazioneOut, status_code=status.HTTP_201_CREATED)
-async def crea_valutazione(valutazione: ValutazioneCreate):
+async def crea_valutazione(valutazione: ValutazioneCreate, current_user: UserOut = Depends(get_current_user)) -> ValutazioneOut:
     """
     Permette a un paziente di creare una nuova valutazione per una prenotazione completata, quindi a visita effettuata.
-
-    Logica di controllo:
-    1. Verifica che la prenotazione esista.
-    2. Verifica che lo stato della prenotazione sia 'Completata'.
-    3. Verifica che l'utente che lascia la recensione sia lo stesso della prenotazione.
-    4. Verifica che la prenotazione non sia già stata valutata.
 
     Args:
         valutazione (ValutazioneCreate): Dati per la nuova valutazione.
 
     Returns:
         ValutazioneOut: L'oggetto della valutazione creata.
+    Raises:
+        HTTPException: Se la prenotazione non esiste, non è completata, o se il paziente non ha i permessi per valutare.
     """
+    if current_user.tipo_utente != 'paziente':
+        raise HTTPException(status_code=403, detail="Azione non permessa. Solo i pazienti possono lasciare valutazioni.")
+
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
-        # Recupero dati della prenotazione per i controlli
-        cursor.execute("SELECT * FROM Prenotazioni WHERE id = ?", (valutazione.prenotazione_id,))
+        # Recupera il profilo del paziente per ottenere il suo ID specifico (Pazienti.id)
+        cursor.execute("SELECT id FROM Pazienti WHERE utente_id = ?", (current_user.id,))
+        paziente_record = cursor.fetchone()
+        if not paziente_record:
+            raise HTTPException(status_code=404, detail="Profilo paziente non trovato per l'utente autenticato.")
+        paziente_id = paziente_record['id']
+
+        # Recupero dati della prenotazione per i controlli di autorizzazione
+        query_prenotazione = """
+            SELECT p.id, p.stato, p.paziente_id, d.medico_id
+            FROM Prenotazioni p
+            JOIN Disponibilita d ON p.disponibilita_id = d.id
+            WHERE p.id = ?
+        """
+        cursor.execute(query_prenotazione, (valutazione.prenotazione_id,))
         prenotazione = cursor.fetchone()
 
         if not prenotazione:
             raise HTTPException(status_code=404, detail="Prenotazione non trovata.")
 
-        # Controlla se la prenotazione è stata completata
+        # Controlli di autorizzazione
         if prenotazione['stato'] != 'Completata':
-            raise HTTPException(
-                status_code=403,
-                detail="È possibile valutare solo le prenotazioni completate."
-            )
+            raise HTTPException(status_code=403, detail="È possibile valutare solo le prenotazioni completate.")
         
-        # Controlla che il paziente che valuta sia lo stesso della prenotazione
-        if prenotazione['paziente_id'] != valutazione.paziente_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Non hai i permessi per valutare questa prenotazione."
-            )
+        if prenotazione['paziente_id'] != paziente_id:
+            raise HTTPException(status_code=403, detail="Azione non permessa. Non puoi valutare una prenotazione di un altro utente.")
+
+        medico_id_da_valutare = prenotazione['medico_id']
 
         # Inserisce la nuova valutazione. Il database lancerà un errore se la prenotazione_id è già stata usata (grazie al vincolo UNIQUE).
         query_insert = """
@@ -62,8 +70,8 @@ async def crea_valutazione(valutazione: ValutazioneCreate):
         """
         cursor.execute(query_insert, (
             valutazione.prenotazione_id,
-            valutazione.paziente_id,
-            valutazione.medico_id,
+            paziente_id,
+            medico_id_da_valutare,
             valutazione.punteggio,
             valutazione.commento
         ))
@@ -93,9 +101,9 @@ async def crea_valutazione(valutazione: ValutazioneCreate):
         close_db_resources(conn, cursor)
 
 @router.get("/medico/{medico_id}", response_model=List[ValutazioneOut])
-async def get_valutazioni_medico(medico_id: int):
+async def get_valutazioni_medico(medico_id: int) -> List[ValutazioneOut]:
     """
-    Recupera la lista di tutte le valutazioni ricevute da uno specifico medico.
+    (Endpoint pubblico) Recupera la lista di tutte le valutazioni ricevute da uno specifico medico.
 
     Args:
         medico_id (int): L'ID del medico.

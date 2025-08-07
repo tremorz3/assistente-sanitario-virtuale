@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
 # Import dei modelli e delle utility necessari
 from utils.database import get_db_connection, close_db_resources
 from utils.models import PazienteRegisration, MedicoRegistration, UserLogin, UserOut, Token
-from utils.auth import pwd_context, create_access_token
+from utils.auth import pwd_context, create_access_token, get_current_user
 from utils.geocoding import get_coordinates
 
 import mariadb
@@ -189,3 +189,22 @@ async def login(user: UserLogin) ->  UserOut:
         )
     finally:
         close_db_resources(conn, cursor)
+
+# Nuovo endpoint "/me" per recuperare il profilo dell'utente loggato.
+# Il prefisso del router non c'è, quindi l'URL sarà semplicemente "/me".
+@router.get("/me", response_model=UserOut)
+async def read_users_me(current_user: UserOut = Depends(get_current_user)):
+    """
+    Endpoint protetto per recuperare i dati dell'utente attualmente autenticato.
+
+    L'utente viene ottenuto tramite la dipendenza `get_current_user`,
+    che valida il token JWT inviato nella richiesta.
+
+    Args:
+        current_user (UserOut): L'utente autenticato, iniettato da Depends.
+
+    Returns:
+        UserOut: I dati del profilo dell'utente loggato.
+    """
+    # La dipendenza `get_current_user` fa già tutto il lavoro.
+    return current_user
