@@ -49,8 +49,8 @@ Lo schema Entità-Relazione (ER) del database è disponibile nel seguente file:
     - [x] API per la gestione delle prenotazioni e valutazioni.
     - [x] API per l'analisi dei sintomi e suggerimenti (Integrazione AI).
     - [x] API per la ricerca geolocalizzata di specialisti (Utility).
-- [ ] **Fase 3: Sicurezza Backend**
-    - [ ] Implementazione di Authentication e Authorization (JWT) su tutti gli endpoint sensibili.
+- [x] **Fase 3: Sicurezza Backend**
+    - [x] Implementazione di Authentication e Authorization (JWT) su tutti gli endpoint sensibili.
 - [ ] **Fase 4: Sviluppo Frontend**
     - [ ] Interfaccia utente per la registrazione e il login.
     - [ ] Interfaccia per la ricerca geolocalizzata e la visualizzazione dei profili medici.
