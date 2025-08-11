@@ -1,18 +1,16 @@
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
+"""
+Questo modulo gestisce gli endpoint proxy per la funzionalità di chat,
+inoltrando i messaggi dell'utente e le richieste di reset al backend.
+"""
+from fastapi import APIRouter
 import os
 
 from utils.models import APIParams, ChatRequestFromBrowser
 from utils.api_client import call_api
 
-router = APIRouter()
-templates = Jinja2Templates(directory=os.getenv("TEMPLATES_DIR", "templates"))
-
-@router.get("/", response_class=HTMLResponse)
-def serve_chat_page(request: Request):
-    """Serve la pagina HTML iniziale."""
-    return templates.TemplateResponse("chat.html", {"request": request})
+router = APIRouter(
+    tags=["Frontend - Proxy Chat"]
+)
 
 @router.post("/chat")
 def proxy_chat_request(request: ChatRequestFromBrowser):

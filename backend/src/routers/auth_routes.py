@@ -42,7 +42,7 @@ async def register_paziente(paziente: PazienteRegisration) -> UserOut:
         cursor.execute(query_paziente, (nuovo_utente_id, paziente.nome, paziente.cognome, paziente.telefono))
 
         conn.commit() # Salva le modifiche nel database
-        return UserOut(id=nuovo_utente_id, email=paziente.email, tipo_utente="paziente")
+        return UserOut(id=nuovo_utente_id, email=paziente.email, tipo_utente="paziente", nome=paziente.nome)
     except mariadb.IntegrityError:
         # Errore specifico per violazione di un vincolo (es. email UNIQUE)
         if conn:
@@ -128,7 +128,7 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
         ))
 
         conn.commit()
-        return UserOut(id=nuovo_utente_id, email=medico.email, tipo_utente="medico")
+        return UserOut(id=nuovo_utente_id, email=medico.email, tipo_utente="medico", nome=medico.nome)
     except mariadb.IntegrityError:
         if conn:
             conn.rollback()
@@ -165,7 +165,15 @@ async def login(user: UserLogin) ->  UserOut:
         cursor = conn.cursor(dictionary=True)
 
         # Query per recuperare l'utente nel database
-        query: str = "SELECT id, email, password_hash, tipo_utente FROM Utenti WHERE email = ?"
+        query = """
+            SELECT
+                u.id, u.email, u.password_hash, u.tipo_utente,
+                COALESCE(p.nome, m.nome) AS nome
+            FROM Utenti u
+            LEFT JOIN Pazienti p ON u.id = p.utente_id
+            LEFT JOIN Medici m ON u.id = m.utente_id
+            WHERE u.email = ?
+        """
         cursor.execute(query, (user.email,))
         utente = cursor.fetchone()
 
@@ -181,7 +189,13 @@ async def login(user: UserLogin) ->  UserOut:
         token: Token = Token(access_token=access_token, token_type="bearer")
 
         # Bearer Token è uno standard per l'autenticazione, che specifica che il portatore (bearer) del token ha accesso alle risorse protette
-        return UserOut(id=utente['id'], email=utente['email'], tipo_utente=utente['tipo_utente'], token=token)
+        return UserOut(
+            id=utente['id'], 
+            email=utente['email'], 
+            tipo_utente=utente['tipo_utente'], 
+            nome=utente['nome'], 
+            token=token
+        )
     except mariadb.Error as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

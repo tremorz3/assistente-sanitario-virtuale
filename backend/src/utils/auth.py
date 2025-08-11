@@ -134,14 +134,27 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(http_be
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         
-        # Verifica che l'utente esista ancora nel database.
-        cursor.execute("SELECT id, email, tipo_utente FROM Utenti WHERE id = ?", (token_data.id,))
-        user = cursor.fetchone()
+        # Usiamo LEFT JOIN e COALESCE (restituisce il primo valore non nullo che trova) per recuperare il nome, che sia un
+        # paziente o un medico, in una sola query.
+        query = """
+            SELECT
+                u.id, u.email, u.tipo_utente,
+                COALESCE(p.nome, m.nome) AS nome,
+                p.id AS paziente_id,
+                m.id AS medico_id
+            FROM Utenti u
+            LEFT JOIN Pazienti p ON u.id = p.utente_id
+            LEFT JOIN Medici m ON u.id = m.utente_id
+            WHERE u.id = ?
+        """
+        cursor.execute(query, (token_data.id,))
+        user_data = cursor.fetchone()
         
-        if user is None:
-            raise HTTPException(status_code=404, detail="User not found")
+        if user_data is None or user_data.get('nome') is None:
+            # Se l'utente non esiste o non ha un profilo associato, l'autenticazione fallisce.
+            raise HTTPException(status_code=404, detail="User not found or profile incomplete")
             
-        return UserOut(**user)
+        return UserOut(**user_data)
         
     except mariadb.Error:
         raise HTTPException(status_code=500, detail="Database error during user retrieval")

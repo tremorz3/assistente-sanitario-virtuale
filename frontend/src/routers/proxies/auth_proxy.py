@@ -1,28 +1,24 @@
-
-from fastapi import APIRouter, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+"""
+Questo modulo gestisce tutti gli endpoint proxy relativi all'autenticazione.
+Inoltra le richieste di login, registrazione e recupero dati utente al backend.
+"""
+from fastapi import APIRouter, Request, Form, HTTPException, Header
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from datetime import date
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from utils.models import APIParams
 from utils.api_client import call_api
 
-router = APIRouter()
+# Creazione del router per il proxy di autenticazione
+router = APIRouter(
+    tags=["Frontend - Proxy Autenticazione"]
+)
 
 templates = Jinja2Templates(directory="templates")
 
-@router.get("/pagina-login", response_class=HTMLResponse)
-async def get_login_page(request: Request, success: bool = False):
-    '''
-    Endpoint per mostrare la pagina di login.
-    '''
-    context = {"request": request, "error": None}
-    if success:
-        context["success_message"] = "Registrazione avvenuta con successo! Ora puoi effettuare il login."
-    return templates.TemplateResponse("login.html", context)
-
-@router.post("/pagina-login", response_class=HTMLResponse)
+@router.post("/pagina-login", response_class=JSONResponse)
 async def post_login_page(request: Request, email: str = Form(...), password: str = Form(...)):
     '''
     Endpoint per gestire i dati inviati dal form di login.
@@ -43,29 +39,13 @@ async def post_login_page(request: Request, email: str = Form(...), password: st
         # Chiamata all'API per il login
         response = call_api(login_params)
 
-        # Se il login ha successo, reindirizza alla pagina principale (TEMPORANEO)
-        content: str = f"""
-        <html>
-            <head><title>Login Riuscito</title></head>
-            <body>
-                <h1>Login effettuato con successo!</h1>
-                <p>Email di accesso: {email}</p>
-                <p>Tipo di utente: {response.get('tipo_utente')}</p>
-                <p>Token di accesso: {response.get('token')['access_token']}</p>
-            </body>
-        </html>
-        """
-        return HTMLResponse(content=content)
+        # Chiama il backend e restituisce direttamente la sua risposta JSON
+        response_data = call_api(login_params)
+        return JSONResponse(content=response_data)
     except HTTPException as e:
-        # In caso di errore, mostra la pagina di login con un messaggio di errore
-        return templates.TemplateResponse("login.html", {"request": request, "error": e.detail})
-
-@router.get("/pagina-registrazione-paziente", response_class=HTMLResponse)
-async def get_patient_register_page(request: Request):
-    '''
-    Mostra la pagina di registrazione per il paziente.
-    '''
-    return templates.TemplateResponse("signup-paziente.html", {"request": request})
+        # Se call_api solleva un'eccezione, la inoltriamo come JSONResponse
+        # con il corretto codice di stato.
+        return JSONResponse(content={"detail": e.detail}, status_code=e.status_code)
 
 @router.post("/pagina-registrazione-paziente", response_class=HTMLResponse)
 async def post_register_page(
@@ -117,26 +97,6 @@ async def post_register_page(
     except HTTPException as e:
         # Se la chiamata API fallisce (es. email già esistente), si mostra l'errore
         return templates.TemplateResponse("signup-paziente.html", {"request": request, "error": e.detail})
-
-@router.get("/pagina-registrazione-medico", response_class=HTMLResponse)
-async def get_medico_register_page(request: Request):
-    '''
-    Mostra la pagina di registrazione per il medico, recuperando dinamicamente
-    la lista delle specializzazioni dall'API del backend.
-    '''
-    try:
-        params = APIParams(method="GET", endpoint="/specializzazioni/")
-        lista_specializzazioni = call_api(params)
-
-        # Invio della lista al template
-        context = {"request": request, "specializzazioni": lista_specializzazioni}
-        return templates.TemplateResponse("signup-medico.html", context)
-
-    except HTTPException as e:
-        error_msg = f"Impossibile caricare le specializzazioni: {e.detail}"
-        context = {"request": request, "error": error_msg}
-
-        return templates.TemplateResponse("signup-medico.html", context)
 
 @router.post("/pagina-registrazione-medico", response_class=HTMLResponse)
 async def post_medico_register_page(
@@ -212,3 +172,27 @@ async def post_medico_register_page(
             "specializzazioni": lista_specializzazioni
         }
         return templates.TemplateResponse("signup-medico.html", context)
+
+@router.get("/me")
+async def proxy_get_me(authorization: Optional[str] = Header(None)):
+    """
+    Endpoint proxy che inoltra la richiesta per ottenere i dati dell'utente
+    autenticato al backend.
+    """
+    # Se l'header di autorizzazione non è presente, non possiamo fare nulla.
+    if authorization is None:
+        raise HTTPException(status_code=401, detail="Missing Authorization Header")
+        
+    # Estraiamo il token dall'header
+    try:
+        token_type, token = authorization.split()
+        if token_type.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Authorization Header format")
+
+    # Usiamo la funzione call_api per inoltrare la chiamata al backend,
+    # passando il token per l'autenticazione.
+    api_params = APIParams(method="GET", endpoint="/me")
+    
+    return call_api(params=api_params, token=token)
