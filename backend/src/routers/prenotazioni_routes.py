@@ -3,7 +3,14 @@ from typing import List
 import mariadb
 
 # Import dei modelli e delle utility necessarie
-from utils.models import PrenotazioneCreate, PrenotazioneOut, PrenotazioneUpdate, UserOut
+from utils.models import (
+    PrenotazioneCreate, 
+    PrenotazioneOut, 
+    PrenotazioneUpdate, 
+    PrenotazioneDetailOut, 
+    PrenotazioneMedicoDetailOut, 
+    UserOut
+)
 from utils.database import get_db_connection, close_db_resources
 from utils.auth import get_current_user
 
@@ -99,16 +106,17 @@ async def crea_prenotazione(prenotazione: PrenotazioneCreate, current_user: User
     finally:
         close_db_resources(conn, cursor)
 
-@router.get("/paziente/me", response_model=List[PrenotazioneOut])
-async def get_my_prenotazioni_paziente(current_user: UserOut = Depends(get_current_user)) -> List[PrenotazioneOut]:
+@router.get("/paziente/me", response_model=List[PrenotazioneDetailOut])
+async def get_my_prenotazioni_paziente(current_user: UserOut = Depends(get_current_user)) -> List[PrenotazioneDetailOut]:
     """
-    Recupera la lista di tutte le prenotazioni effettuate dal paziente loggato.
+    Recupera la lista di tutte le prenotazioni effettuate dal paziente loggato, arricchita con i
+    dettagli del medico e l'orario della visita.
     
     Args:
         paziente_id (int): L'ID del paziente.
 
     Returns:
-        List[PrenotazioneOut]: Una lista di oggetti prenotazione.
+        List[PrenotazioneDetailOut]: Una lista di oggetti prenotazione.
     Raises:
         HTTPException:
             - 404: Se il paziente non esiste.
@@ -131,12 +139,23 @@ async def get_my_prenotazioni_paziente(current_user: UserOut = Depends(get_curre
         
         paziente_id = paziente_record['id']
         
-        # Query per selezionare tutte le prenotazioni di un paziente
-        query = "SELECT * FROM Prenotazioni WHERE paziente_id = ? ORDER BY data_prenotazione DESC"
+        # Query per selezionare tutte le prenotazioni di un paziente e dati aggiuntivi
+        query = """
+            SELECT 
+                p.*,
+                m.nome AS medico_nome,
+                m.cognome AS medico_cognome,
+                d.data_ora_inizio
+            FROM Prenotazioni p
+            JOIN Disponibilita d ON p.disponibilita_id = d.id
+            JOIN Medici m ON d.medico_id = m.id
+            WHERE p.paziente_id = ? 
+            ORDER BY d.data_ora_inizio DESC
+        """
         cursor.execute(query, (paziente_id,))
         
         prenotazioni = cursor.fetchall()
-        return [PrenotazioneOut(**p) for p in prenotazioni]
+        return [PrenotazioneDetailOut(**p) for p in prenotazioni]
 
     except mariadb.Error as e:
         raise HTTPException(
@@ -146,10 +165,10 @@ async def get_my_prenotazioni_paziente(current_user: UserOut = Depends(get_curre
     finally:
         close_db_resources(conn, cursor)
 
-@router.get("/medico/me", response_model=List[PrenotazioneOut])
-async def get_my_prenotazioni_medico(current_user: UserOut = Depends(get_current_user)) -> List[PrenotazioneOut]:
+@router.get("/medico/me", response_model=List[PrenotazioneMedicoDetailOut])
+async def get_my_prenotazioni_medico(current_user: UserOut = Depends(get_current_user)) -> List[PrenotazioneMedicoDetailOut]:
     """
-    Recupera la lista di tutte le prenotazioni associate a al medico loggato.
+    Recupera la lista di tutte le prenotazioni associate a al medico loggato, arricchite di dettagli del paziente.
     Questo richiede un JOIN attraverso la tabella Disponibilita.
 
     Args:
@@ -178,16 +197,22 @@ async def get_my_prenotazioni_medico(current_user: UserOut = Depends(get_current
         # Query che unisce Prenotazioni e Disponibilita
         # per trovare gli appuntamenti di un medico.
         query = """
-            SELECT p.*
+            SELECT 
+                p.*,
+                paz.nome AS paziente_nome,
+                paz.cognome AS paziente_cognome,
+                paz.telefono AS paziente_telefono,
+                d.data_ora_inizio
             FROM Prenotazioni p
             JOIN Disponibilita d ON p.disponibilita_id = d.id
+            JOIN Pazienti paz ON p.paziente_id = paz.id
             WHERE d.medico_id = ?
-            ORDER BY p.data_prenotazione DESC
+            ORDER BY d.data_ora_inizio ASC
         """
         cursor.execute(query, (medico_id,))
         
         prenotazioni = cursor.fetchall()
-        return [PrenotazioneOut(**p) for p in prenotazioni]
+        return [PrenotazioneMedicoDetailOut(**p) for p in prenotazioni]
 
     except mariadb.Error as e:
         raise HTTPException(

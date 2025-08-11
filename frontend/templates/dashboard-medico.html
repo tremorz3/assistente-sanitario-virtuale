@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Medico</title>
+    <script src="/static/js/app.js" defer></script>
+
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 20px; background-color: #f4f4f9; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { color: #333; margin: 0; }
+        #logout-button { background-color: #dc3545; color: white; padding: 8px 12px; border: none; border-radius: 5px; cursor: pointer; }
+        .appuntamento-card { background-color: white; border: 1px solid #ddd; border-left: 5px solid #007bff; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .appuntamento-card.completato { border-left-color: #28a745; }
+        .appuntamento-card.cancellato { border-left-color: #6c757d; opacity: 0.7; }
+        .appuntamento-card h3 { margin: 0 0 10px; }
+        .actions button { margin-top: 10px; padding: 5px 10px; border-radius: 5px; border: 1px solid #ccc; cursor: pointer; }
+        .actions button:disabled { background-color: #e9ecef; cursor: not-allowed; }
+        .actions .btn-complete { background-color: #28a745; color: white; border-color: #28a745; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Dashboard Medico</h1>
+        <button id="logout-button">Logout</button>
+    </div>
+
+    <div id="user-info">
+        <p><strong>Benvenuto/a, Dr. <span id="user-name">Caricamento...</span>!</strong></p>
+    </div>
+
+    <h2>Prossimi Appuntamenti</h2>
+    <div id="appuntamenti-futuri"><p>Caricamento...</p></div>
+
+    <h2>Appuntamenti Passati</h2>
+    <div id="appuntamenti-passati"><p>Caricamento...</p></div>
+
+    <script>
+        // --- LOGICA ESEGUITA AL CARICAMENTO DELLA PAGINA ---
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (!localStorage.getItem('user_token')) {
+                window.location.href = '/pagina-login';
+                return;
+            }
+            
+            try {
+                // 1. Carica i dati del medico
+                const userData = await callApi('/me');
+                document.getElementById('user-name').textContent = userData.nome;
+
+                // 2. Carica le prenotazioni del medico (ora arricchite)
+                const prenotazioni = await callApi('/api/prenotazioni/medico/me');
+                
+                const futuriContainer = document.getElementById('appuntamenti-futuri');
+                const passatiContainer = document.getElementById('appuntamenti-passati');
+                futuriContainer.innerHTML = '';
+                passatiContainer.innerHTML = '';
+
+                const adesso = new Date();
+
+                prenotazioni.forEach(p => {
+                    const dataVisita = new Date(p.data_ora_inizio); // Ora usiamo l'orario esatto della visita
+                    const card = document.createElement('div');
+                    card.className = 'appuntamento-card';
+                    
+                    let actionsHtml = '<div class="actions">';
+                    // Il pulsante "Completa" appare solo per le visite confermate future
+                    if (p.stato === 'Confermata') {
+                         actionsHtml += `<button class="btn-complete" onclick="handleCompleteClick(${p.id})">Segna come Completata</button>`;
+                    }
+                    actionsHtml += '</div>';
+
+                    // --- VISUALIZZAZIONE DATI ARRICCHITI ---
+                    card.innerHTML = `
+                        <h3>Paziente: ${p.paziente_nome} ${p.paziente_cognome}</h3>
+                        <p><strong>Telefono:</strong> ${p.paziente_telefono}</p>
+                        <p><strong>Data:</strong> ${dataVisita.toLocaleDateString('it-IT', {day: '2-digit', month: 'long', year: 'numeric'})}</p>
+                        <p><strong>Ora:</strong> ${dataVisita.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</p>
+                        <p><strong>Stato:</strong> ${p.stato}</p>
+                        <p><strong>Note del Paziente:</strong> ${p.note_paziente || 'Nessuna nota'}</p>
+                        ${actionsHtml}
+                    `;
+                    
+                    if (p.stato === 'Completata' || p.stato === 'Cancellata' || (p.stato === 'Confermata' && dataVisita < adesso) ) {
+                        if(p.stato === 'Completata') card.classList.add('completato');
+                        if(p.stato === 'Cancellata') card.classList.add('cancellato');
+                        passatiContainer.appendChild(card);
+                    } else {
+                        futuriContainer.appendChild(card);
+                    }
+                });
+
+                if(futuriContainer.innerHTML === '') futuriContainer.innerHTML = '<p>Nessun appuntamento futuro.</p>';
+                if(passatiContainer.innerHTML === '') passatiContainer.innerHTML = '<p>Nessun appuntamento passato.</p>';
+
+            } catch (error) {
+                console.error("Errore nel caricamento della dashboard:", error.message);
+            }
+            document.getElementById('logout-button').addEventListener('click', logout);
+        });
+
+        async function handleCompleteClick(prenotazioneId) {
+            if (!confirm("Sei sicuro di voler segnare questa visita come completata?")) return;
+            try {
+                await callApi(`/api/prenotazioni/${prenotazioneId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stato: 'Completata' })
+                });
+                alert('Visita segnata come completata!');
+                window.location.reload();
+            } catch (error) {
+                alert(`Errore: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -53,15 +53,37 @@ class UserLogin(BaseModel):
     email: EmailStr = Field(..., example="utente@example.com", description="Email dell'utente.")
     password: str = Field(..., description="Password dell'utente.")
 
+# In assistente-sanitario/backend/src/utils/models.py
+
 class UserOut(BaseModel):
     """
-    Schema Pydantic per i dati utente da restituire dopo registrazione/login.
-    NON include la password_hash per sicurezza.
+    Schema Pydantic per i dati utente da restituire.
+    Include l'ID utente generico e l'ID del profilo specifico.
     """
-    id: int = Field(..., description="ID unico dell'utente.")
+    id: int = Field(..., description="ID unico dell'utente (dalla tabella Utenti).")
     email: EmailStr = Field(..., description="Email dell'utente.")
     tipo_utente: str = Field(..., description="Tipo di utente ('medico' o 'paziente').")
+    nome: str = Field(..., description="Nome dell'utente (dal profilo Paziente o Medico).")
+    # Questi campi conterranno l'ID del profilo specifico (es. Medici.id o Pazienti.id)
+    medico_id: Optional[int] = Field(None, description="ID del profilo Medico, se applicabile.")
+    paziente_id: Optional[int] = Field(None, description="ID del profilo Paziente, se applicabile.")
     token: Optional[Token] = Field(None, description="Token di accesso JWT. (Opzionale)")
+
+class MedicoOut(BaseModel):
+    """
+    Schema Pydantic per restituire pubblicamente i dati di un medico.
+    Include il nome della specializzazione e omette dati sensibili.
+    """
+    id: int
+    nome: str
+    cognome: str
+    citta: str
+    indirizzo_studio: str
+    punteggio_medio: float
+    specializzazione_nome: str # Campo derivato dal JOIN
+
+    class Config:
+        orm_mode = True
 
 # Modelli per le risorse dell'API
 class SpecializzazioneOut(BaseModel):
@@ -163,6 +185,25 @@ class PrenotazioneOut(PrenotazioneBase):
 
     class Config:
         orm_mode = True
+
+class PrenotazioneDetailOut(PrenotazioneOut):
+    """
+    Schema esteso per restituire i dettagli di una prenotazione,
+    incluso il nome del medico e l'orario della visita.
+    """
+    medico_nome: str
+    medico_cognome: str
+    data_ora_inizio: datetime
+
+class PrenotazioneMedicoDetailOut(PrenotazioneOut):
+    """
+    Schema esteso per la vista del medico, che include i dettagli
+    del paziente e l'orario esatto della visita.
+    """
+    paziente_nome: str
+    paziente_cognome: str
+    paziente_telefono: str
+    data_ora_inizio: datetime
 
 class PrenotazioneUpdate(BaseModel):
     """

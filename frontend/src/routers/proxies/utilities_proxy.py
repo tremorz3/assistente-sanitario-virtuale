@@ -1,14 +1,18 @@
+"""
+Questo modulo gestisce endpoint proxy per varie utilità, come
+l'autocomplete degli indirizzi.
+"""
 from fastapi import APIRouter, Query
 
 from utils.models import APIParams
 from utils.api_client import call_api
 
 router = APIRouter(
-    prefix="/api", # Aggiungiamo un prefisso per coerenza
-    tags=["API Proxy"]
+    prefix="/api",
+    tags=["Frontend - Proxy Utilities"]
 )
 
-@router.get("/api/autocomplete-address")
+@router.get("/autocomplete-address")
 def proxy_autocomplete_address(query: str = Query(..., min_length=3)):
     """
     Endpoint proxy che inoltra la richiesta di autocomplete al backend

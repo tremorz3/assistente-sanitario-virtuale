@@ -100,6 +100,49 @@ async def crea_valutazione(valutazione: ValutazioneCreate, current_user: UserOut
     finally:
         close_db_resources(conn, cursor)
 
+@router.get("/me", response_model=List[ValutazioneOut])
+async def get_my_valutazioni(current_user: UserOut = Depends(get_current_user)) -> List[ValutazioneOut]:
+    """
+    (Protetto) Recupera la lista di tutte le valutazioni lasciate dal paziente autenticato.
+    Args:
+        current_user (UserOut): L'utente autenticato, ottenuto tramite la dipendenza get_current_user.
+    Returns:
+        List[ValutazioneOut]: Una lista di oggetti valutazione lasciate dal paziente loggato.
+    Raises:
+        HTTPException: Se l'utente non è un paziente o se si verifica un errore nel database.
+    """
+    if current_user.tipo_utente != 'paziente':
+        raise HTTPException(status_code=403, detail="Azione non permessa. Solo i pazienti possono vedere le proprie valutazioni.")
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Recupera il profilo del paziente per ottenere il suo ID specifico
+        cursor.execute("SELECT id FROM Pazienti WHERE utente_id = ?", (current_user.id,))
+        paziente_record = cursor.fetchone()
+        if not paziente_record:
+            raise HTTPException(status_code=404, detail="Profilo paziente non trovato.")
+        
+        paziente_id = paziente_record['id']
+
+        # Query per selezionare tutte le valutazioni di quel paziente
+        query = "SELECT * FROM Valutazioni WHERE paziente_id = ?"
+        cursor.execute(query, (paziente_id,))
+        
+        valutazioni = cursor.fetchall()
+        return [ValutazioneOut(**v) for v in valutazioni]
+
+    except mariadb.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore nel recupero delle valutazioni: {e}"
+        )
+    finally:
+        close_db_resources(conn, cursor)
+
 @router.get("/medico/{medico_id}", response_model=List[ValutazioneOut])
 async def get_valutazioni_medico(medico_id: int) -> List[ValutazioneOut]:
     """

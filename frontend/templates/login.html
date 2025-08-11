@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <style>
+        /* ... (gli stili CSS rimangono invariati) ... */
         body {
             display: flex;
             justify-content: center;
@@ -24,7 +25,7 @@
             flex-direction: column;
             gap: 20px;
             align-items: center;
-            width: 300px; /* Larghezza fissa per contenere i campi */
+            width: 300px;
         }
 
         .login-container h2 {
@@ -34,17 +35,17 @@
 
         .login-container input[type="email"],
         .login-container input[type="password"] {
-            width: 100%; /* I campi prenderanno la larghezza del contenitore */
+            width: 100%;
             padding: 12px 15px;
-            margin: 0; /* Rimuove i margini di default */
+            margin: 0;
             border: 1px solid #ddd;
             border-radius: 4px;
-            box-sizing: border-box; /* Include padding e bordo nella larghezza totale */
+            box-sizing: border-box;
             font-size: 16px;
         }
 
         .login-container button {
-            width: 100%; /* Il bottone prenderà la larghezza del contenitore */
+            width: 100%;
             padding: 12px 15px;
             background-color: #007bff;
             color: white;
@@ -53,7 +54,7 @@
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
-            transition: background-color 0.3s ease; /* Transizione per il cambio colore */
+            transition: background-color 0.3s ease;
         }
 
         .login-container button:hover {
@@ -67,7 +68,7 @@
         }
 
         .register-link a {
-            color: #2196F3; /* Blu, per coerenza con l'hover del bottone */
+            color: #2196F3;
             text-decoration: none;
             font-weight: bold;
         }
@@ -82,22 +83,34 @@
             border: 1px solid #c3e6cb;
             padding: 10px;
             border-radius: 4px;
-            margin-bottom: 16px;
+            width: 100%;
+            box-sizing: border-box;
             text-align: center;
+        }
+        
+        /* Stile per i messaggi di errore dinamici */
+        #error-message {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+            display: none; /* Nascosto di default */
         }
     </style>
 </head>
 <body>
-    <form class="login-container" action="/pagina-login" method="post">
+    <form class="login-container" id="login-form">
         <h2>Login</h2>
 
         {% if success_message %}
             <div class="success">{{ success_message }}</div>
         {% endif %}
-                
-        {% if error %}
-            <p style="color: red;">{{ error }}</p>
-        {% endif %}
+        
+        <div id="error-message"></div>
 
         <input type="email" name="email" placeholder="Email" required>
         <input type="password" name="password" placeholder="Password" required>
@@ -105,5 +118,63 @@
         <button type="submit">Log-in</button>
         <p class="register-link">Non hai un account? Registrati: <a href="/pagina-registrazione-paziente">Paziente</a> o <a href="/pagina-registrazione-medico">Medico</a></p>
     </form>
+
+    <script>
+        // Selezioniamo il form e il contenitore del messaggio di errore
+        const loginForm = document.getElementById('login-form');
+        const errorMessageDiv = document.getElementById('error-message');
+
+        // Aggiungiamo un listener per l'evento 'submit' del form
+        loginForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Impediamo il ricaricamento della pagina
+
+            errorMessageDiv.style.display = 'none';
+            errorMessageDiv.textContent = '';
+            
+            const formData = new FormData(loginForm);
+
+            try {
+                // Eseguiamo la chiamata API asincrona al nostro endpoint del frontend
+                const response = await fetch('/pagina-login', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    // --- SUCCESSO E LOGICA DI REINDIRIZZAMENTO ---
+                    console.log('Login riuscito:', data);
+                    
+                    const token = data.token.access_token;
+                    localStorage.setItem('user_token', token);
+                    
+                    // --- CONTROLLO DEL TIPO UTENTE ---
+                    // Controlliamo il ruolo dell'utente ricevuto nella risposta API.
+                    if (data.tipo_utente === 'medico') {
+                        // Se è un medico, lo reindirizziamo alla sua dashboard.
+                        window.location.href = '/dashboard-medico';
+                    } else if (data.tipo_utente === 'paziente') {
+                        // Se è un paziente, lo reindirizziamo al suo profilo/dashboard.
+                        window.location.href = '/profilo';
+                    } else {
+                        // Fallback nel caso di un tipo utente non previsto
+                        errorMessageDiv.textContent = 'Tipo utente non riconosciuto.';
+                        errorMessageDiv.style.display = 'block';
+                    }
+
+                } else {
+                    // Gestione Errore
+                    errorMessageDiv.textContent = data.detail || 'Si è verificato un errore.';
+                    errorMessageDiv.style.display = 'block';
+                }
+            } catch (error) {
+                // Gestione errori di rete
+                console.error('Errore durante il login:', error);
+                errorMessageDiv.textContent = 'Impossibile connettersi al server. Riprova più tardi.';
+                errorMessageDiv.style.display = 'block';
+            }
+        });
+    </script>
 </body>
 </html>
