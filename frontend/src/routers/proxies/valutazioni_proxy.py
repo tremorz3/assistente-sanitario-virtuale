@@ -31,3 +31,11 @@ async def proxy_crea_valutazione(payload: dict = Body(...), authorization: Optio
     api_params = APIParams(method="POST", endpoint="/valutazioni", payload=payload)
     return call_api(params=api_params, token=token)
 
+@router.get("/medico/me")
+async def proxy_get_my_valutazioni_medico(authorization: Optional[str] = Header(None)):
+    """
+    Proxy per ottenere le valutazioni che ha ricevuto il medico autenticato.
+    """
+    token = authorization.split(" ")[1] if authorization else None
+    api_params = APIParams(method="GET", endpoint="/valutazioni/medico/me")
+    return call_api(params=api_params, token=token)

@@ -1,0 +1,805 @@
+/* ==============================================
+   CSS Variabili e Stile di Base (Tema Scuro)
+   ==============================================
+   Definiamo i colori del nostro tema in variabili (--nome-variabile) per poterli
+   riutilizzare facilmente in tutto il foglio di stile. Questo rende la
+   manutenzione e le modifiche future molto più semplici.
+*/
+:root {
+    --bg-dark-primary: #121212; /* Sfondo principale, un nero morbido */
+    --bg-dark-secondary: #1e1e1e; /* Sfondo per card, form e navbar */
+    --primary-color: #007bff; /* Blu primario per elementi interattivi */
+    --primary-color-hover: #0056b3; /* Blu più scuro per l'hover */
+    --text-primary: #e0e0e0; /* Colore testo principale, un grigio chiaro */
+    --text-secondary: #a0a0a0; /* Colore testo secondario, più scuro */
+    --border-color: #333; /* Colore per i bordi sottili */
+}
+
+/*
+   Reset di base e stile del body.
+   Applichiamo il nostro font 'Poppins' e i colori di base del tema.
+*/
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* Stile per i link globali */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-color-hover);
+}
+
+/*
+   Layout Container.
+   Questa classe centra il contenuto della pagina, lasciando dei margini laterali.
+*/
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ==============================================
+   Stile della Barra di Navigazione
+   ==============================================
+*/
+.navbar {
+    background-color: var(--bg-dark-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000; /* Assicura che la navbar stia sopra gli altri elementi */
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    gap: 20px; /* Spazio tra i link */
+}
+
+.nav-link {
+    font-weight: 400;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.nav-link:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Stile speciale per il pulsante di logout per farlo risaltare */
+.btn-logout {
+    border: 1px solid var(--primary-color);
+}
+.btn-logout:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+
+/* ==============================================
+   Animazioni e Classi di Utilità
+   ==============================================
+*/
+
+/* Classe per nascondere elementi (usata da JS per la navbar dinamica) */
+.hidden {
+    display: none !important;
+}
+
+/*
+   Animazione di fade-in per il contenuto principale.
+   Definiamo un'animazione chiamata 'fadeIn' che porta l'opacità da 0 a 1.
+*/
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Applichiamo l'animazione al nostro contenitore 'main-content' */
+#main-content {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* ==============================================
+   Stili per Form (Login, Registrazione)
+   ==============================================
+*/
+.form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+}
+
+.form-box {
+    background-color: var(--bg-dark-secondary);
+    padding: 30px 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+}
+
+.form-box h2 {
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.btn-form {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-form:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.form-switch {
+    margin-top: 20px;
+    color: var(--text-secondary);
+}
+
+.form-error, .form-success {
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    width: 100%;
+    text-align: center;
+}
+
+.form-error {
+    background-color: #4a1c24;
+    color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.form-success {
+    background-color: #155724;
+    color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+
+/* ==============================================
+   Stili per la Homepage (index.html)
+   ==============================================
+*/
+.hero-section {
+    text-align: center;
+    padding: 60px 20px;
+}
+.hero-section h1 {
+    font-size: 2.8rem;
+    margin-bottom: 1rem;
+}
+.hero-section .subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto 40px auto;
+}
+
+#chat-container {
+    max-width: 700px;
+    margin: 0 auto;
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+#chat-window {
+    height: 350px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-message {
+    padding: 10px 15px;
+    border-radius: 18px;
+    max-width: 85%;
+    line-height: 1.4;
+}
+.chat-message p {
+    margin: 0;
+}
+.user-message {
+    background-color: var(--primary-color);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.assistant-message {
+    background-color: #333;
+    color: var(--text-primary);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+}
+
+#geo-status {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    min-height: 1.2em;
+}
+
+#chat-form {
+    display: flex;
+    gap: 10px;
+}
+
+#chatInput {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    resize: none;
+    font-family: 'Poppins', sans-serif;
+}
+#chat-form button {
+    padding: 10px 20px;
+    border-radius: 20px;
+    border: none;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+#chat-form button:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.features-section {
+    display: flex;
+    gap: 30px;
+    padding: 60px 20px;
+    justify-content: center;
+}
+
+.feature-card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 400px;
+    text-align: center;
+}
+.feature-card h2 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+.feature-card p {
+    color: var(--text-secondary);
+    margin-bottom: 25px;
+}
+.btn-feature {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 5px;
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+.btn-feature:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* ==============================================
+   Stili per Dashboard e Profili
+   ==============================================
+*/
+.page-header {
+    padding: 30px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 30px;
+}
+.page-header h1 {
+    font-size: 2.5rem;
+}
+.page-header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+}
+
+/* Layout a due colonne per pagine come "Gestione Disponibilità" */
+@media (min-width: 768px) {
+    .grid-2-cols {
+        grid-template-columns: 1fr 2fr;
+    }
+}
+
+.card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 25px;
+}
+.card h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Stili per le card degli appuntamenti */
+.appuntamento-card {
+    background-color: #2a2a3e;
+    border: 1px solid #444;
+    border-left: 5px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: transform 0.2s ease;
+}
+.appuntamento-card:hover {
+    transform: translateY(-3px);
+}
+.appuntamento-card h3 {
+    margin: 0 0 10px;
+}
+.appuntamento-card p {
+    margin: 5px 0;
+    color: var(--text-secondary);
+}
+.appuntamento-card strong {
+    color: var(--text-primary);
+}
+
+/* Colori specifici per lo stato dell'appuntamento */
+.appuntamento-card.completato {
+    border-left-color: #28a745; /* Verde */
+}
+.appuntamento-card.cancellato {
+    border-left-color: #6c757d; /* Grigio */
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Stili per i pulsanti di azione nelle card */
+.actions button {
+    margin-right: 10px;
+    padding: 6px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    background-color: #333;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+.actions button:hover {
+    filter: brightness(1.2);
+}
+.actions button:disabled {
+    background-color: #444;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.actions .btn-review {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+.actions .btn-cancel {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+.actions .btn-complete {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* Stili per il modale della recensione */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background-color: var(--bg-dark-secondary);
+    margin: 15% auto;
+    padding: 30px;
+    border: 1px solid var(--border-color);
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    position: relative;
+}
+
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: center;
+    gap: 5px;
+}
+.star-rating input[type="radio"] { display: none; }
+.star-rating label { font-size: 2.5em; color: #444; cursor: pointer; transition: color 0.2s; }
+.star-rating input[type="radio"]:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label { color: #f90; }
+
+#review-form textarea {
+    width: 100%;
+    min-height: 80px;
+    margin-top: 15px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 4px;
+}
+#review-form button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 10px;
+}
+
+/* ==============================================
+   Stili per Lista e Profilo Medici
+   ==============================================
+*/
+.medici-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.medico-card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.medico-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.1);
+}
+.medico-card h2 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+.medico-card .specializzazione {
+    font-style: italic;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+.medico-card .punteggio {
+    font-weight: bold;
+    color: #28a745; /* Verde */
+}
+
+/* Stili per la pagina del profilo singolo */
+.profilo-medico-grid {
+    display: grid;
+    gap: 30px;
+}
+@media (min-width: 992px) {
+    .profilo-medico-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+.info-medico p {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+}
+.info-medico strong {
+    color: var(--text-primary);
+}
+
+#disponibilita-lista {
+    list-style: none;
+    padding: 0;
+    max-height: 450px;
+    overflow-y: auto;
+}
+#disponibilita-lista li {
+    background-color: #2a2a3e;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 12px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+#disponibilita-lista li:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+#disponibilita-lista li.disabled {
+    background-color: #333;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+#notifica {
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    text-align: center;
+    font-size: 1.1em;
+}
+#notifica.success { background-color: #155724; color: #d4edda; }
+#notifica.error { background-color: #721c24; color: #f8d7da; }
+
+/* ==============================================
+   Stili per Pagina Recensioni Medico
+   ==============================================
+*/
+.recensione-card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.recensione-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.star-rating-display .star {
+    font-size: 1.2rem;
+    color: #444; /* Stella vuota */
+}
+
+.star-rating-display .star.filled {
+    color: #f90; /* Stella piena */
+}
+
+.data-recensione {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.recensione-body p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ==============================================
+   Stili per il Sistema di Notifiche Personalizzato
+   ==============================================
+*/
+.notifier-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000; /* Assicura che sia sopra tutto il resto */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.notifier-overlay:not(.hidden) {
+    opacity: 1;
+}
+
+.notifier-box {
+    background-color: var(--bg-dark-secondary);
+    padding: 30px 40px;
+    border-radius: 8px;
+    border-top: 4px solid var(--primary-color);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+.notifier-overlay:not(.hidden) .notifier-box {
+    transform: scale(1);
+}
+
+#salus-notifier-title {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+}
+
+#salus-notifier-message {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.notifier-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.notifier-buttons button {
+    padding: 10px 25px;
+    border-radius: 5px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-width: 100px;
+}
+
+.notifier-btn-confirm {
+    background-color: var(--primary-color);
+    color: white;
+}
+.notifier-btn-confirm:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.notifier-btn-cancel {
+    background-color: #555;
+    color: var(--text-primary);
+}
+.notifier-btn-cancel:hover {
+    background-color: #777;
+}
+
+/* ==============================================
+   Stili per il Modale di Prenotazione
+   ==============================================
+*/
+#booking-modal-details {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+#booking-form textarea {
+    width: 100%;
+    min-height: 80px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 4px;
+    font-family: 'Poppins', sans-serif;
+    resize: vertical;
+}
+
+#booking-form button {
+    margin-top: 15px;
+    width: 100%;
+}
+
+/* ==============================================
+   Stili per il Logo nella Navbar
+   ==============================================
+*/
+.nav-logo {
+    display: flex;
+    align-items: center; /* Allinea verticalmente icona e testo */
+    gap: 10px; /* Aggiunge un po' di spazio tra icona e testo */
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.nav-logo-icon {
+    height: 35px; /* Definiamo l'altezza dell'icona */
+    width: auto;  /* La larghezza si adatterà in proporzione */
+}

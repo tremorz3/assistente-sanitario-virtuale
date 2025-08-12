@@ -18,33 +18,33 @@ router = APIRouter(
 
 templates = Jinja2Templates(directory="templates")
 
+# La funzione accetta un payload JSON (un dizionario) invece di campi di un form.
+# Questo la rende coerente con ciò che invia lo script del nuovo login.html.
 @router.post("/pagina-login", response_class=JSONResponse)
-async def post_login_page(request: Request, email: str = Form(...), password: str = Form(...)):
+async def post_login_page(payload: Dict[str, str]) -> JSONResponse:
     '''
-    Endpoint per gestire i dati inviati dal form di login.
+    Endpoint per gestire i dati JSON inviati dal form di login.
     Comunica con l'API per autenticare l'utente.
     Args:
-        request (Request): La richiesta HTTP.
-        email (str): L'email dell'utente.
-        password (str): La password dell'utente.
+        payload (Dict[str, str]): Un dizionario contenente email e password.
+    Returns:
+        JSONResponse: Risposta JSON con i dati dell'utente autenticato o un errore
     '''
     try:
-        #Preparazione dei parametri per la chiamata API
+        # Preparazione dei parametri per la chiamata API usando il payload ricevuto
         login_params: APIParams = APIParams(
             method="POST",
             endpoint="/login",
-            payload={"email": email, "password": password}
+            payload={"email": payload.get("email"), "password": payload.get("password")}
         )
-
-        # Chiamata all'API per il login
-        response = call_api(login_params)
 
         # Chiama il backend e restituisce direttamente la sua risposta JSON
         response_data = call_api(login_params)
         return JSONResponse(content=response_data)
+        
     except HTTPException as e:
         # Se call_api solleva un'eccezione, la inoltriamo come JSONResponse
-        # con il corretto codice di stato.
+        # con il corretto codice di stato e dettaglio.
         return JSONResponse(content={"detail": e.detail}, status_code=e.status_code)
 
 @router.post("/pagina-registrazione-paziente", response_class=HTMLResponse)
@@ -52,7 +52,6 @@ async def post_register_page(
     request: Request,
     nome: str = Form(...),
     cognome: str = Form(...),
-    data_di_nascita: date = Form(...),
     telefono: str = Form(...),
     email: str = Form(...),
     password: str = Form(...)
@@ -77,7 +76,6 @@ async def post_register_page(
         patient_payload: Dict[str, Any] = {
             "nome": nome,
             "cognome": cognome,
-            "data_di_nascita": data_di_nascita.isoformat(), # Conversione della data in formato ISO
             "telefono": telefono,
             "email": email,
             "password": password

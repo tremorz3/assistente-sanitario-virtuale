@@ -1,0 +1,61 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Le Mie Recensioni - Salus AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Le Mie Recensioni</h1>
+    <p>Qui puoi leggere tutte le valutazioni che i pazienti hanno lasciato dopo le loro visite. Per questione di privacy, le 
+        recensioni sono anonime
+    </p>
+</div>
+
+<div id="recensioni-container" class="dashboard-grid">
+    <p>Caricamento recensioni in corso...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        const container = document.getElementById('recensioni-container');
+        try {
+            // Chiamata all'endpoint del proxy per ottenere le recensioni del medico loggato
+            const recensioni = await callApi('/api/valutazioni/medico/me');
+            
+            container.innerHTML = '';
+            if (recensioni.length === 0) {
+                container.innerHTML = '<p>Non hai ancora ricevuto nessuna recensione.</p>';
+                return;
+            }
+
+            recensioni.forEach(recensione => {
+                const card = document.createElement('div');
+                card.className = 'recensione-card';
+                
+                // Creiamo le stelle per il punteggio
+                let stelleHtml = '<div class="star-rating-display">';
+                for (let i = 1; i <= 5; i++) {
+                    stelleHtml += `<span class="star ${i <= recensione.punteggio ? 'filled' : ''}">★</span>`;
+                }
+                stelleHtml += '</div>';
+
+                card.innerHTML = `
+                    <div class="recensione-header">
+                        ${stelleHtml}
+                        <span class="data-recensione">${new Date(recensione.data_valutazione).toLocaleDateString('it-IT')}</span>
+                    </div>
+                    <div class="recensione-body">
+                        <p>${recensione.commento || '<i>Nessun commento lasciato.</i>'}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error("Impossibile caricare le recensioni:", error);
+            container.innerHTML = '<p>Si è verificato un errore durante il caricamento delle recensioni.</p>';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,185 +1,177 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Disponibilità</title>
-    <script src="/static/js/app.js" defer></script>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 20px; background-color: #f4f4f9; }
-        .container { display: grid; grid-template-columns: 1fr 2fr; gap: 30px; }
-        .card { background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h1, h2 { color: #333; }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-        .time-inputs { display: flex; gap: 10px; } /* Contenitore per i campi ora */
-        .btn { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; }
-        .disponibilita-list ul { list-style: none; padding: 0; max-height: 400px; overflow-y: auto; }
-        .disponibilita-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .disponibilita-list li.prenotato { color: #6c757d; font-style: italic; }
-        .btn-delete { background-color: #dc3545; color: white; border: none; padding: 5px 8px; border-radius: 4px; cursor: pointer; }
-        .btn-delete:disabled { background-color: #e9ecef; }
-        #notifica { padding: 15px; border-radius: 5px; margin-top: 20px; text-align: center; display: none; }
-        #notifica.success { background-color: #d4edda; color: #155724; }
-        #notifica.error { background-color: #f8d7da; color: #721c24; }
-    </style>
-</head>
-<body>
+{% extends "layouts/base.html" %}
+
+{% block title %}Gestione Disponibilità - Salus AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
     <h1>Gestione Disponibilità</h1>
-    <p>In questa pagina puoi aggiungere nuove fasce orarie in cui sei disponibile e cancellare quelle future non ancora prenotate.</p>
+    <p>Aggiungi nuove fasce orarie in cui sei disponibile e cancella quelle future non ancora prenotate.</p>
+</div>
 
-    <div class="container">
-        <div class="card">
-            <h2>Aggiungi Nuova Disponibilità</h2>
-            <form id="add-disponibilita-form">
-                <div class="form-group">
-                    <label for="data_visita">Data</label>
-                    <input type="date" id="data_visita" name="data_visita" required>
-                </div>
-                <div class="form-group">
-                    <label>Orario</label>
-                    <div class="time-inputs">
-                        <input type="time" id="ora_inizio" name="ora_inizio" required title="Ora di inizio">
-                        <input type="time" id="ora_fine" name="ora_fine" required title="Ora di fine">
-                    </div>
-                </div>
-                <button type="submit" class="btn">Aggiungi</button>
-            </form>
-        </div>
-        <div class="card disponibilita-list">
-            <h2>Le Tue Disponibilità</h2>
-            <ul id="disponibilita-container">
-                <li>Caricamento...</li>
-            </ul>
-        </div>
+<div class="dashboard-grid grid-2-cols">
+    <div class="card">
+        <h2>Aggiungi Slot</h2>
+        <form id="add-disponibilita-form">
+            <div class="form-group">
+                <label for="data_visita">Data</label>
+                <input type="date" id="data_visita" name="data_visita" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="ora_inizio">Orario di Inizio</label>
+                <input type="time" id="ora_inizio" name="ora_inizio" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="ora_fine">Orario di Fine</label>
+                <input type="time" id="ora_fine" name="ora_fine" class="form-control" required>
+            </div>
+            <button type="submit" class="btn-form">Aggiungi Disponibilità</button>
+        </form>
     </div>
-    <div id="notifica"></div>
+    <div class="card">
+        <h2>Le Tue Disponibilità</h2>
+        <ul id="disponibilita-container" class="disponibilita-list">
+            <li>Caricamento...</li>
+        </ul>
+    </div>
+</div>
 
-    <script>        
-        const disponibilitaContainer = document.getElementById('disponibilita-container');
-        const notificaDiv = document.getElementById('notifica');
+<div id="notifica" class="form-error hidden" style="margin-top: 20px;"></div>
 
-        // --- FUNZIONE PER CARICARE E VISUALIZZARE LE DISPONIBILITÀ ---
-        async function loadDisponibilita() {
-            disponibilitaContainer.innerHTML = '<li>Caricamento...</li>';
-            try {
-                // 1. Chiamiamo /me per ottenere i dati dell'utente, incluso il medico_id
-                const userData = await callApi('/me');
-                if (userData.tipo_utente !== 'medico' || !userData.medico_id) {
-                    throw new Error("Accesso non autorizzato o profilo medico non valido.");
-                }
-                
-                const medicoId = userData.medico_id;
+{% endblock %}
 
-                // 2. Usiamo l'endpoint esistente per le disponibilità, passando l'ID ottenuto
-                const disponibilita = await callApi(`/medici/api/${medicoId}/disponibilita?solo_libere=false`);
-                
-                disponibilitaContainer.innerHTML = '';
-                if (disponibilita.length === 0) {
-                    disponibilitaContainer.innerHTML = '<li>Nessuna disponibilità impostata.</li>';
-                    return;
-                }
+{% block scripts %}
+<script>
+    const disponibilitaContainer = document.getElementById('disponibilita-container');
+    const addForm = document.getElementById('add-disponibilita-form');
 
-                // Ordiniamo le disponibilità dalla più recente alla meno recente
-                disponibilita.sort((a, b) => new Date(b.data_ora_inizio) - new Date(a.data_ora_inizio));
-
-                disponibilita.forEach(slot => {
-                    const li = document.createElement('li');
-                    const dataInizio = new Date(slot.data_ora_inizio);
-                    li.textContent = `${dataInizio.toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' })}`;
-                    
-                    if(slot.is_prenotato) {
-                        li.classList.add('prenotato');
-                        li.innerHTML += ' <span>(Prenotato)</span>';
-                    } else {
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.className = 'btn-delete';
-                        deleteBtn.textContent = 'Cancella';
-                        deleteBtn.onclick = () => handleDeleteClick(slot.id);
-                        li.appendChild(deleteBtn);
-                    }
-                    disponibilitaContainer.appendChild(li);
-                });
-
-            } catch (error) {
-                notifica('error', error.message);
+    // La logica di caricamento rimane la stessa
+    async function loadDisponibilita() {
+        disponibilitaContainer.innerHTML = '<li>Caricamento...</li>';
+        try {
+            const userData = await callApi('/me');
+            if (userData.tipo_utente !== 'medico' || !userData.medico_id) {
+                throw new Error("Accesso non autorizzato o profilo medico non valido.");
             }
+            
+            const medicoId = userData.medico_id;
+            const disponibilita = await callApi(`/medici/api/${medicoId}/disponibilita?solo_libere=false`);
+            
+            disponibilitaContainer.innerHTML = '';
+            if (disponibilita.length === 0) {
+                disponibilitaContainer.innerHTML = '<li>Nessuna disponibilità impostata.</li>';
+                return;
+            }
+
+            disponibilita.sort((a, b) => new Date(b.data_ora_inizio) - new Date(a.data_ora_inizio));
+
+            disponibilita.forEach(slot => {
+                const li = document.createElement('li');
+                const dataInizio = new Date(slot.data_ora_inizio);
+                li.innerHTML = `<span>${dataInizio.toLocaleString('it-IT', { dateStyle: 'full', timeStyle: 'short' })}</span>`;
+                
+                if(slot.is_prenotato) {
+                    li.classList.add('prenotato');
+                    li.innerHTML += '<span class="status-prenotato">(Prenotato)</span>';
+                } else {
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn-delete actions';
+                    deleteBtn.textContent = 'Cancella';
+                    deleteBtn.onclick = () => handleDeleteClick(slot.id);
+                    li.appendChild(deleteBtn);
+                }
+                disponibilitaContainer.appendChild(li);
+            });
+
+        } catch (error) {
+            SalusNotifier.alert(error.message, 'Errore');
+        }
+    }
+
+    // --- MODIFICA QUI: Sostituzione delle notifiche nel form ---
+    addForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const dataVisita = document.getElementById('data_visita').value;
+        const oraInizio = document.getElementById('ora_inizio').value;
+        const oraFine = document.getElementById('ora_fine').value;
+
+        const dataOraInizioCompleta = `${dataVisita}T${oraInizio}`;
+        const dataOraFineCompleta = `${dataVisita}T${oraFine}`;
+
+        const oggi = new Date();
+        oggi.setHours(0, 0, 0, 0);
+
+        if (new Date(dataOraInizioCompleta) < oggi) {
+            return SalusNotifier.alert('Non è possibile inserire una disponibilità per una data passata.', 'Errore di Validazione');
+        }
+        if (new Date(dataOraFineCompleta) <= new Date(dataOraInizioCompleta)) {
+            return SalusNotifier.alert("L'orario di fine deve essere successivo a quello di inizio.", 'Errore di Validazione');
         }
         
-        const addForm = document.getElementById('add-disponibilita-form');
-        addForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const formData = new FormData(addForm);
-            
-            const dataVisita = formData.get('data_visita'); // Es: "2025-08-11"
-            const oraInizio = formData.get('ora_inizio');   // Es: "09:00"
-            const oraFine = formData.get('ora_fine');       // Es: "09:30"
+        const payload = { data_ora_inizio: dataOraInizioCompleta, data_ora_fine: dataOraFineCompleta };
 
-            // Combiniamo data e ora per creare le stringhe ISO 8601 che il backend si aspetta
-            const dataOraInizioCompleta = `${dataVisita}T${oraInizio}`;
-            const dataOraFineCompleta = `${dataVisita}T${oraFine}`;
-            
-            const dataInizioObj = new Date(dataOraInizioCompleta);
-            const dataFineObj = new Date(dataOraFineCompleta);
-            const oggi = new Date();
-            // Resettiamo l'ora di 'oggi' per confrontare solo la data
-            oggi.setHours(0, 0, 0, 0);
+        try {
+            await callApi('/api/disponibilita', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            SalusNotifier.alert('Disponibilità aggiunta con successo!', 'Successo');
+            addForm.reset();
+            loadDisponibilita();
+        } catch (error) {
+            SalusNotifier.alert(error.message, 'Errore');
+        }
+    });
 
-            // 1. Controlla che la data non sia nel passato
-            if (dataInizioObj < oggi) {
-                notifica('error', 'Non è possibile inserire una disponibilità per una data passata.');
-                return; // Blocca l'invio del form
-            }
+    // --- MODIFICA QUI: Sostituzione di confirm() e alert() ---
+    async function handleDeleteClick(disponibilitaId) {
+        const userConfirmed = await SalusNotifier.confirm(
+            "Sei sicuro di voler cancellare questa fascia oraria? L'azione non può essere annullata.",
+            "Conferma Cancellazione Slot"
+        );
 
-            // 2. Controlla che l'ora di fine sia successiva a quella di inizio
-            if (dataFineObj <= dataInizioObj) {
-                notifica('error', "L'orario di fine deve essere successivo a quello di inizio.");
-                return; // Blocca l'invio del form
-            }
-            
-            // --- FINE VALIDAZIONE ---
-
-            const payload = {
-                data_ora_inizio: dataOraInizioCompleta,
-                data_ora_fine: dataOraFineCompleta
-            };
-
-            try {
-                await callApi('/api/disponibilita', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                notifica('success', 'Disponibilità aggiunta con successo!');
-                addForm.reset();
-                loadDisponibilita();
-            } catch (error) {
-                notifica('error', error.message);
-            }
-        });
-
-        // --- GESTIONE CANCELLAZIONE (invariato) ---
-        async function handleDeleteClick(disponibilitaId) {
-            if (!confirm("Sei sicuro di voler cancellare questa fascia oraria?")) return;
+        if (userConfirmed) {
             try {
                 await callApi(`/api/disponibilita/${disponibilitaId}`, { method: 'DELETE' });
-                notifica('success', 'Disponibilità cancellata.');
+                SalusNotifier.alert('Disponibilità cancellata.', 'Successo');
                 loadDisponibilita();
             } catch(error) {
-                notifica('error', error.message);
+                SalusNotifier.alert(error.message, 'Errore');
             }
         }
-        
-        function notifica(type, message) {
-            notificaDiv.className = type;
-            notificaDiv.textContent = message;
-            notificaDiv.style.display = 'block';
-            setTimeout(() => { notificaDiv.style.display = 'none'; }, 3000);
-        }
+    }
+    
+    // Questa funzione non è più necessaria perché il notifier è globale.
+    // function notifica(type, message) { ... }
 
-        // Carica i dati all'avvio della pagina
-        window.addEventListener('DOMContentLoaded', loadDisponibilita);
-    </script>
-</body>
-</html>
+    window.addEventListener('DOMContentLoaded', loadDisponibilita);
+</script>
+<style>
+    /* Stili specifici per questa pagina */
+    .disponibilita-list {
+        list-style: none;
+        padding: 0;
+        max-height: 400px; /* Altezza massima prima dello scroll */
+        overflow-y: auto;
+    }
+    .disponibilita-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 5px;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .disponibilita-list li.prenotato {
+        color: var(--text-secondary);
+    }
+    .status-prenotato {
+        font-style: italic;
+    }
+    .btn-delete {
+        padding: 5px 10px;
+        background-color: #dc3545;
+        border: 1px solid #dc3545;
+        color: white;
+    }
+</style>
+{% endblock %}

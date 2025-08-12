@@ -1,0 +1,111 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Salus AI - Il Tuo Assistente Sanitario{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <h1>Il Tuo Navigatore della Salute Personale</h1>
+    <p class="subtitle">Descrivi i tuoi sintomi. Salus AI ti aiuterà a identificare lo specialista giusto per te.</p>
+    
+    <div id="chat-container">
+        <div id="chat-window">
+            <div class="chat-message assistant-message">
+                <p>Ciao! Sono Salus, il tuo assistente virtuale. Per aiutarti al meglio, ti chiederò di condividere la tua posizione per trovare gli specialisti più vicini. Come posso aiutarti oggi?</p>
+            </div>
+        </div>
+        <div id="geo-status"></div>
+        <form id="chat-form">
+            <textarea id="chatInput" placeholder="Es. 'Ho un forte mal di schiena da alcuni giorni...'" rows="1"></textarea>
+            <button type="submit" aria-label="Invia messaggio">Invia</button>
+        </form>
+    </div>
+</section>
+
+<section class="features-section">
+    <div class="feature-card">
+        <h2>Per il Paziente</h2>
+        <p>Trova rapidamente lo specialista più adatto, prenota una visita in pochi click e gestisci i tuoi appuntamenti. Tutto in un unico posto.</p>
+        <a href="/pagina-registrazione-paziente" class="btn-feature">Registrati Ora</a>
+    </div>
+    <div class="feature-card">
+        <h2>Per il Medico</h2>
+        <p>Entra a far parte del nostro network, gestisci le tue disponibilità in modo semplice e raggiungi nuovi pazienti ogni giorno.</p>
+        <a href="/pagina-registrazione-medico" class="btn-feature">Unisciti a Noi</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Tutta la logica JavaScript per la chat
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chatInput');
+    const chatWindow = document.getElementById('chat-window');
+    const geoStatus = document.getElementById('geo-status');
+    let userLocation = null;
+
+    chatInput.addEventListener('focus', () => {
+        if (!userLocation && navigator.geolocation) {
+            geoStatus.textContent = 'Richiesta posizione per personalizzare i risultati...';
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
+                    geoStatus.textContent = '📍 Posizione ottenuta. I risultati saranno geolocalizzati.';
+                },
+                () => {
+                    geoStatus.textContent = '⚠️ Posizione negata. I risultati non saranno geolocalizzati.';
+                }
+            );
+        }
+    }, { once: true });
+    
+    chatInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
+
+    chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const userMessage = chatInput.value.trim();
+        if (!userMessage) return;
+
+        appendMessage(userMessage, 'user');
+        chatInput.value = '';
+        chatInput.disabled = true; // Disabilita input durante l'attesa
+
+        try {
+            // Chiamata al proxy del frontend
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ domanda: userMessage, location: userLocation })
+            });
+
+            if (!response.ok) throw new Error(`Errore dal server: ${response.statusText}`);
+
+            const aiData = await response.json();
+            appendMessage(aiData.content, 'assistant');
+        } catch (error) {
+            console.error('Errore durante la chat:', error);
+            appendMessage('Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant');
+        } finally {
+            chatInput.disabled = false; // Riabilita input
+            chatInput.focus();
+        }
+    });
+
+    function appendMessage(text, role) {
+        const messageContainer = document.createElement('div');
+        messageContainer.className = `chat-message ${role}-message`;
+        
+        const messageParagraph = document.createElement('p');
+        messageParagraph.textContent = text;
+        
+        messageContainer.appendChild(messageParagraph);
+        chatWindow.appendChild(messageContainer);
+        chatWindow.scrollTop = chatWindow.scrollHeight; // Scrolla automaticamente in fondo
+    }
+</script>
+{% endblock %}
