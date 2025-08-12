@@ -1,80 +1,54 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elenco Medici</title>
-    <style>
-        body { font-family: sans-serif; max-width: 900px; margin: auto; padding: 20px; background-color: #f4f4f9; }
-        h1 { text-align: center; color: #333; }
-        #medici-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .medico-card { background-color: white; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
-        .medico-card:hover { transform: translateY(-5px); box-shadow: 0 4px 10px rgba(0,0,0,0.15); }
-        .medico-card h2 { margin: 0 0 10px; font-size: 1.2em; color: #007bff; }
-        .medico-card p { margin: 5px 0; color: #555; }
-        .medico-card .specializzazione { font-style: italic; color: #333; }
-        .medico-card .punteggio { font-weight: bold; color: #28a745; }
-    </style>
-</head>
-<body>
+{% extends "layouts/base.html" %}
 
+{% block title %}Elenco Medici - Salus AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
     <h1>Trova il Tuo Specialista</h1>
+    <p>Esplora la lista dei nostri professionisti e trova quello più adatto a te.</p>
+</div>
 
-    <div id="medici-container">
-        <p>Caricamento dei medici in corso...</p>
-    </div>
+<div id="medici-container" class="medici-grid">
+    <p>Caricamento dei medici in corso...</p>
+</div>
+{% endblock %}
 
-    <script>
-        window.addEventListener('DOMContentLoaded', async () => {
-            const container = document.getElementById('medici-container');
-
-            try {
-                // Chiamiamo il nostro endpoint proxy nel frontend
-                const response = await fetch('/medici/api/list');
-                
-                if (!response.ok) {
-                    throw new Error(`Errore dal server: ${response.status}`);
-                }
-
-                const medici = await response.json();
-                
-                // Svuotiamo il contenitore dal messaggio di caricamento
-                container.innerHTML = '';
-
-                if (medici.length === 0) {
-                    container.innerHTML = '<p>Nessun medico trovato.</p>';
-                    return;
-                }
-
-                // Per ogni medico ricevuto, creiamo una "card" HTML
-                medici.forEach(medico => {
-                    const card = document.createElement('div');
-                    card.className = 'medico-card';
-                    
-                    // Aggiungiamo un attributo dati per l'ID, utile per il reindirizzamento
-                    card.dataset.medicoId = medico.id;
-
-                    card.innerHTML = `
-                        <h2>Dr. ${medico.nome} ${medico.cognome}</h2>
-                        <p class="specializzazione">${medico.specializzazione_nome}</p>
-                        <p>${medico.citta}</p>
-                        <p>${medico.indirizzo_studio}</p>
-                        <p class="punteggio">Punteggio: ${medico.punteggio_medio.toFixed(2)} / 5.00</p>
-                    `;
-
-                    // Aggiungiamo un evento click per andare alla pagina di dettaglio (che creeremo)
-                    card.addEventListener('click', () => {
-                        window.location.href = `/medici/${medico.id}`;
-                    });
-
-                    container.appendChild(card);
-                });
-
-            } catch (error) {
-                console.error("Impossibile caricare la lista dei medici:", error);
-                container.innerHTML = '<p>Si è verificato un errore durante il caricamento dei medici. Riprova più tardi.</p>';
+{% block scripts %}
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        const container = document.getElementById('medici-container');
+        try {
+            const response = await fetch('/medici/api/list');
+            if (!response.ok) throw new Error(`Errore: ${response.status}`);
+            const medici = await response.json();
+            
+            container.innerHTML = '';
+            if (medici.length === 0) {
+                container.innerHTML = '<p>Nessun medico trovato al momento.</p>';
+                return;
             }
-        });
-    </script>
-</body>
-</html>
+
+            medici.forEach(medico => {
+                const card = document.createElement('div');
+                card.className = 'medico-card';
+                card.dataset.medicoId = medico.id;
+                card.innerHTML = `
+                    <h2>Dr. ${medico.nome} ${medico.cognome}</h2>
+                    <p class="specializzazione">${medico.specializzazione_nome}</p>
+                    <p>${medico.citta}</p>
+                    <p>${medico.indirizzo_studio}</p>
+                    <p class="punteggio">Punteggio: ${medico.punteggio_medio.toFixed(2)} / 5.00</p>
+                `;
+                card.addEventListener('click', () => {
+                    window.location.href = `/medici/${medico.id}`;
+                });
+                container.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error("Impossibile caricare la lista dei medici:", error);
+            container.innerHTML = '<p>Si è verificato un errore durante il caricamento dei medici. Riprova più tardi.</p>';
+        }
+    });
+</script>
+{% endblock %}

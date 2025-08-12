@@ -19,6 +19,12 @@ router = APIRouter(
 # Configurazione dei template Jinja2
 templates = Jinja2Templates(directory=os.getenv("TEMPLATES_DIR", "templates"))
 
+# Home Page
+@router.get("/", response_class=HTMLResponse)
+async def serve_home_page(request: Request) -> HTMLResponse:
+    """Mostra la pagina principale dell'applicazione."""
+    return templates.TemplateResponse("index.html", {"request": request})
+
 # Viste di Autenticazione e Registrazione
 @router.get("/pagina-login", response_class=HTMLResponse)
 async def get_login_page(request: Request, success: bool = False) -> HTMLResponse:
@@ -86,8 +92,7 @@ async def get_gestione_disponibilita_page(request: Request) -> HTMLResponse:
     """Mostra la pagina per la gestione delle proprie disponibilità."""
     return templates.TemplateResponse("gestione-disponibilita.html", {"request": request})
 
-# Vista per la Chat
-@router.get("/", response_class=HTMLResponse)
-async def serve_chat_page(request: Request) -> HTMLResponse:
-    """Mostra la pagina principale dell'applicazione, la chat con l'AI."""
-    return templates.TemplateResponse("chat.html", {"request": request})
+@router.get("/le-mie-recensioni", response_class=HTMLResponse)
+async def get_medico_recensioni_page(request: Request) -> HTMLResponse:
+    """Mostra la pagina con l'elenco delle recensioni ricevute dal medico."""
+    return templates.TemplateResponse("recensioni-medico.html", {"request": request})

@@ -1,180 +1,91 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <style>
-        /* ... (gli stili CSS rimangono invariati) ... */
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f2f5;
-        }
+{% extends "layouts/base.html" %}
 
-        .login-container {
-            background-color: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            align-items: center;
-            width: 300px;
-        }
+{% block title %}Login - Salus AI{% endblock %}
 
-        .login-container h2 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .login-container input[type="email"],
-        .login-container input[type="password"] {
-            width: 100%;
-            padding: 12px 15px;
-            margin: 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-size: 16px;
-        }
-
-        .login-container button {
-            width: 100%;
-            padding: 12px 15px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.3s ease;
-        }
-
-        .login-container button:hover {
-            background-color: #4CAF50;
-        }
-
-        .register-link {
-            font-size: 14px;
-            color: #555;
-            text-align: center;
-        }
-
-        .register-link a {
-            color: #2196F3;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .register-link a:hover {
-            text-decoration: underline;
-        }
-
-        .success {
-            color: #155724;
-            background-color: #d4edda;
-            border: 1px solid #c3e6cb;
-            padding: 10px;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-            text-align: center;
-        }
-        
-        /* Stile per i messaggi di errore dinamici */
-        #error-message {
-            color: #721c24;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-            text-align: center;
-            display: none; /* Nascosto di default */
-        }
-    </style>
-</head>
-<body>
-    <form class="login-container" id="login-form">
-        <h2>Login</h2>
+{% block content %}
+<div class="form-container">
+    <form class="form-box" id="login-form">
+        <h2>Accedi al Tuo Account</h2>
 
         {% if success_message %}
-            <div class="success">{{ success_message }}</div>
+            <div class="form-success">{{ success_message }}</div>
         {% endif %}
         
-        <div id="error-message"></div>
+        <div id="error-message" class="form-error hidden"></div>
 
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="iltuoindirizzo@email.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required>
+        </div>
 
-        <button type="submit">Log-in</button>
-        <p class="register-link">Non hai un account? Registrati: <a href="/pagina-registrazione-paziente">Paziente</a> o <a href="/pagina-registrazione-medico">Medico</a></p>
+        <button type="submit" class="btn-form">Accedi</button>
+        
+        <p class="form-switch">
+            Non hai un account? <a href="/pagina-registrazione-paziente">Registrati</a>
+        </p>
     </form>
+</div>
+{% endblock %}
 
-    <script>
-        // Selezioniamo il form e il contenitore del messaggio di errore
-        const loginForm = document.getElementById('login-form');
-        const errorMessageDiv = document.getElementById('error-message');
+{% block scripts %}
+<script>
+    const loginForm = document.getElementById('login-form');
+    const errorMessageDiv = document.getElementById('error-message');
 
-        // Aggiungiamo un listener per l'evento 'submit' del form
-        loginForm.addEventListener('submit', async (event) => {
-            event.preventDefault(); // Impediamo il ricaricamento della pagina
+    loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault(); // Impedisce il ricaricamento della pagina
+        errorMessageDiv.classList.add('hidden'); // Nasconde il vecchio errore
+        errorMessageDiv.textContent = '';
+        
+        // Raccoglie i dati dal form e li converte in un oggetto JavaScript
+        const formData = new FormData(loginForm);
+        const data = Object.fromEntries(formData.entries());
 
-            errorMessageDiv.style.display = 'none';
-            errorMessageDiv.textContent = '';
+        try {
+            // Esegue la chiamata API, inviando i dati come JSON
+            const response = await fetch('/pagina-login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json' // Specifica che stiamo inviando JSON
+                },
+                body: JSON.stringify(data) // Converte l'oggetto JS in una stringa JSON
+            });
             
-            const formData = new FormData(loginForm);
+            // Attende la risposta e la converte da JSON
+            const responseData = await response.json();
 
-            try {
-                // Eseguiamo la chiamata API asincrona al nostro endpoint del frontend
-                const response = await fetch('/pagina-login', {
-                    method: 'POST',
-                    body: formData
-                });
+            if (response.ok) {
+                // Se il login ha successo (status 2xx)
+                localStorage.setItem('user_token', responseData.token.access_token);
                 
-                const data = await response.json();
-
-                if (response.ok) {
-                    // --- SUCCESSO E LOGICA DI REINDIRIZZAMENTO ---
-                    console.log('Login riuscito:', data);
-                    
-                    const token = data.token.access_token;
-                    localStorage.setItem('user_token', token);
-                    
-                    // --- CONTROLLO DEL TIPO UTENTE ---
-                    // Controlliamo il ruolo dell'utente ricevuto nella risposta API.
-                    if (data.tipo_utente === 'medico') {
-                        // Se è un medico, lo reindirizziamo alla sua dashboard.
-                        window.location.href = '/dashboard-medico';
-                    } else if (data.tipo_utente === 'paziente') {
-                        // Se è un paziente, lo reindirizziamo al suo profilo/dashboard.
-                        window.location.href = '/profilo';
-                    } else {
-                        // Fallback nel caso di un tipo utente non previsto
-                        errorMessageDiv.textContent = 'Tipo utente non riconosciuto.';
-                        errorMessageDiv.style.display = 'block';
-                    }
-
+                if (responseData.tipo_utente === 'medico') {
+                    window.location.href = '/dashboard-medico';
                 } else {
-                    // Gestione Errore
-                    errorMessageDiv.textContent = data.detail || 'Si è verificato un errore.';
-                    errorMessageDiv.style.display = 'block';
+                    window.location.href = '/profilo';
                 }
-            } catch (error) {
-                // Gestione errori di rete
-                console.error('Errore durante il login:', error);
-                errorMessageDiv.textContent = 'Impossibile connettersi al server. Riprova più tardi.';
-                errorMessageDiv.style.display = 'block';
+            } else {
+                // Se il login fallisce (status 4xx, 5xx)
+                // MODIFICA: Gestisce correttamente il messaggio di errore
+                if (typeof responseData.detail === 'string') {
+                    // Se il dettaglio è una semplice stringa (es. "Email o password non validi")
+                    errorMessageDiv.textContent = responseData.detail;
+                } else {
+                    // Se il dettaglio è complesso (come un errore di validazione 422)
+                    errorMessageDiv.textContent = 'Dati non validi. Controlla i campi inseriti.';
+                }
+                errorMessageDiv.classList.remove('hidden'); // Mostra il box dell'errore
             }
-        });
-    </script>
-</body>
-</html>
+        } catch (error) {
+            // Errore di rete o di connessione
+            console.error('Errore durante il login:', error);
+            errorMessageDiv.textContent = 'Impossibile connettersi al server. Riprova più tardi.';
+            errorMessageDiv.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

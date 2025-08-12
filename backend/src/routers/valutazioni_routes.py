@@ -143,6 +143,42 @@ async def get_my_valutazioni(current_user: UserOut = Depends(get_current_user)) 
     finally:
         close_db_resources(conn, cursor)
 
+@router.get("/medico/me", response_model=List[ValutazioneOut])
+async def get_my_valutazioni_medico(current_user: UserOut = Depends(get_current_user)) -> List[ValutazioneOut]:
+    """
+    (Protetto) Recupera la lista di tutte le valutazioni ricevute dal medico autenticato.
+    """
+    if current_user.tipo_utente != 'medico':
+        raise HTTPException(status_code=403, detail="Azione non permessa. Solo i medici possono vedere le proprie valutazioni.")
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Recupera l'ID del medico dal suo utente_id (contenuto nel token)
+        cursor.execute("SELECT id FROM Medici WHERE utente_id = ?", (current_user.id,))
+        medico_record = cursor.fetchone()
+        if not medico_record:
+            raise HTTPException(status_code=404, detail="Profilo medico non trovato.")
+        medico_id = medico_record['id']
+
+        # Query per selezionare tutte le valutazioni di quel medico, ordinate dalla più recente.
+        query = "SELECT * FROM Valutazioni WHERE medico_id = ? ORDER BY data_valutazione DESC"
+        cursor.execute(query, (medico_id,))
+        
+        valutazioni = cursor.fetchall()
+        return [ValutazioneOut(**v) for v in valutazioni]
+
+    except mariadb.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore nel recupero delle valutazioni: {e}"
+        )
+    finally:
+        close_db_resources(conn, cursor)
+
 @router.get("/medico/{medico_id}", response_model=List[ValutazioneOut])
 async def get_valutazioni_medico(medico_id: int) -> List[ValutazioneOut]:
     """
