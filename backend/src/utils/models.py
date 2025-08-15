@@ -85,6 +85,15 @@ class MedicoOut(BaseModel):
     class Config:
         orm_mode = True
 
+class MedicoGeolocalizzatoOut(MedicoOut):
+    """
+    Schema Pydantic per restituire i dati di un medico geolocalizzato.
+    Estende MedicoOut aggiungendo il campo della distanza calcolata e le coordinate.
+    """
+    distanza_km: float = Field(..., description="Distanza calcolata in chilometri dalla posizione dell'utente.")
+    latitudine: float = Field(..., description="Latitudine dello studio medico.")
+    longitudine: float = Field(..., description="Longitudine dello studio medico.")
+
 # Modelli per le risorse dell'API
 class SpecializzazioneOut(BaseModel):
     """
@@ -130,6 +139,8 @@ class AddressSuggestion(BaseModel):
     """
     display_address: str  # L'indirizzo formattato e pulito da mostrare all'utente
     validation_address: str # L'indirizzo originale di Nominatim, per la validazione
+    lat: float
+    lon: float
 
 # Modelli per la tabella Disponibilità
 class DisponibilitaBase(BaseModel):

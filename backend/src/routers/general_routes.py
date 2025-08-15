@@ -1,12 +1,19 @@
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import List, Optional
 import mariadb
 
 # Import dei modelli e delle utility necessari
-from utils.models import SpecializzazioneOut, AddressSuggestion, MedicoOut
+from utils.models import (
+    SpecializzazioneOut, 
+    AddressSuggestion, 
+    MedicoOut,
+    MedicoGeolocalizzatoOut,
+    UserOut
+)
 from utils.geocoding import get_address_suggestions
 from utils.database import get_db_connection, close_db_resources
+from utils.auth import get_current_user
 
 router = APIRouter(
     tags=["Utilities & Dati Generali"] # Un tag per raggruppare questi endpoint
@@ -100,6 +107,79 @@ async def get_lista_medici(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Errore nel recupero della lista dei medici: {e}"
+        )
+    finally:
+        close_db_resources(conn, cursor)
+
+@router.get("/medici/vicini", response_model=List[MedicoGeolocalizzatoOut])
+async def get_medici_vicini(
+    lat: float = Query(..., description="Latitudine del punto di ricerca."),
+    lon: float = Query(..., description="Longitudine del punto di ricerca."),
+    raggio_km: int = Query(20, description="Raggio di ricerca in chilometri.", ge=1, le=100),
+    current_user: UserOut = Depends(get_current_user)
+) -> List[MedicoGeolocalizzatoOut]:
+    """
+    (Protetto) Recupera una lista di medici entro un raggio specificato,
+    ordinati per distanza crescente.
+
+    Utilizza la formula di Haversine per calcolare la distanza geodetica
+    tra due punti su una sfera (la Terra).
+
+    Args:
+        lat (float): Latitudine dell'utente.
+        lon (float): Longitudine dell'utente.
+        raggio_km (int): Raggio massimo di ricerca in km. Default 20.
+        current_user (UserOut): Utente autenticato (iniettato da Depends).
+
+    Returns:
+        List[MedicoGeolocalizzatoOut]: Una lista di medici con la loro distanza.
+    """
+    if current_user.tipo_utente != 'paziente':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Azione non permessa. Solo i pazienti possono cercare medici vicini."
+        )
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # La formula di Haversine implementata in SQL.
+        # 6371 è il raggio medio della Terra in chilometri.
+        haversine_query = """
+            SELECT 
+                m.id, m.nome, m.cognome, m.citta, 
+                m.indirizzo_studio, m.punteggio_medio,
+                s.nome AS specializzazione_nome,
+                m.latitudine,
+                m.longitudine,
+                (
+                    6371 * ACOS(
+                        COS(RADIANS(?)) * COS(RADIANS(m.latitudine)) *
+                        COS(RADIANS(m.longitudine) - RADIANS(?)) +
+                        SIN(RADIANS(?)) * SIN(RADIANS(m.latitudine))
+                    )
+                ) AS distanza_km
+            FROM Medici m
+            JOIN Specializzazioni s ON m.specializzazione_id = s.id
+            HAVING distanza_km <= ?
+            ORDER BY distanza_km ASC
+            LIMIT 50;
+        """
+        # Parametri per la query: latitudine, longitudine, latitudine (per il seno), raggio
+        params = (lat, lon, lat, raggio_km)
+        
+        cursor.execute(haversine_query, params)
+        medici = cursor.fetchall()
+        
+        return [MedicoGeolocalizzatoOut(**m) for m in medici]
+
+    except mariadb.Error as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Errore del database durante la ricerca geolocalizzata: {e}"
         )
     finally:
         close_db_resources(conn, cursor)

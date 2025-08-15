@@ -50,7 +50,7 @@ def get_coordinates(address: str) -> Optional[Tuple[float, float]]:
 def get_address_suggestions(query: str) -> List[AddressSuggestion]:
     """
     Ottiene una lista di suggerimenti di indirizzi basati su una query parziale.
-    Ogni suggerimento contiene una versione per il display e una per la validazione.
+    Ogni suggerimento contiene una versione per il display, una per la validazione e le coordinate.
     Args:
         query (str): La query di ricerca per l'autocomplete degli indirizzi.
     Returns:
@@ -87,10 +87,12 @@ def get_address_suggestions(query: str) -> List[AddressSuggestion]:
             if postcode:
                 display_parts.append(postcode)
 
-            # Crea l'oggetto AddressSuggestion e lo aggiunge alla lista
+            # Crea l'oggetto AddressSuggestion includendo lat e lon
             suggestion_obj = AddressSuggestion(
                 display_address=", ".join(display_parts),
-                validation_address=item.get('display_name', '') # L'indirizzo originale completo
+                validation_address=item.get('display_name', ''),
+                lat=float(item.get('lat', 0.0)),
+                lon=float(item.get('lon', 0.0))
             )
             suggestions_list.append(suggestion_obj)
 

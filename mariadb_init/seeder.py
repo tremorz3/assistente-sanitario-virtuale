@@ -49,6 +49,47 @@ def tabelle_sono_vuote(cursor):
         return False
     return True
 
+def crea_medici_test(cursor, specializzazioni_ids):
+    """Crea 3 medici con dati reali a Roma per testare la geolocalizzazione."""
+    print("Creazione di 3 medici di test a Roma...")
+    medici_test = [
+        {
+            "nome": "Mario", "cognome": "Rossi", "email": "dott.mario.rossi@clinic.com",
+            "citta": "Roma", "indirizzo": "Piazza del Colosseo, 1, 00184 Roma RM",
+            "lat": 41.8902, "lon": 12.4922, "spec_id": 10 # Cardiologia
+        },
+        {
+            "nome": "Giulia", "cognome": "Bianchi", "email": "dott.giulia.bianchi@clinic.com",
+            "citta": "Roma", "indirizzo": "Piazza della Rotonda, 00186 Roma RM",
+            "lat": 41.8986, "lon": 12.4769, "spec_id": 18 # Dermatologia
+        },
+        {
+            "nome": "Luca", "cognome": "Verdi", "email": "dott.luca.verdi@clinic.com",
+            "citta": "Roma", "indirizzo": "Via della Conciliazione, 00193 Roma RM",
+            "lat": 41.9022, "lon": 12.4589, "spec_id": 44 # Ortopedia
+        }
+    ]
+
+    medici_ids_test = []
+    for medico in medici_test:
+        cursor.execute("INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'medico')", (medico["email"], PWD_HASH))
+        utente_id = cursor.lastrowid
+        
+        medico_values = (
+            utente_id, medico["spec_id"], medico["nome"], medico["cognome"], medico["citta"],
+            fake.msisdn()[:10], f"Ordine dei Medici di Roma", fake.numerify('#####'),
+            'RM', medico["indirizzo"], medico["lat"], medico["lon"]
+        )
+        cursor.execute("""
+            INSERT INTO Medici (utente_id, specializzazione_id, nome, cognome, citta, telefono, 
+                                ordine_iscrizione, numero_iscrizione, provincia_iscrizione, 
+                                indirizzo_studio, latitudine, longitudine) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, medico_values)
+        medici_ids_test.append(cursor.lastrowid)
+    return medici_ids_test
+
+
 def genera_dati():
     """Funzione principale per generare e inserire tutti i dati."""
     conn = get_db_connection()
@@ -84,9 +125,12 @@ def genera_dati():
             pazienti_ids.append(cursor.lastrowid)
 
         # --- 3. MEDICI ---
-        print(f"Creazione di {NUM_MEDICI} medici...")
+        medici_ids = crea_medici_test(cursor, specializzazioni_ids)
+
+        # Generiamo i medici casuali (ridotti di 3 per mantenere il totale)
+        print(f"Creazione di {NUM_MEDICI - 3} medici...")
         medici_ids = []
-        for _ in range(NUM_MEDICI):
+        for _ in range(NUM_MEDICI - 3):
             nome = fake.first_name()
             cognome = fake.last_name()
             email = f"dott.{nome.lower()}.{cognome.lower()}@clinic.com"
