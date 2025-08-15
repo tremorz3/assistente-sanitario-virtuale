@@ -26,3 +26,12 @@ def proxy_autocomplete_address(query: str = Query(..., min_length=3)):
 
     # Chiama l'API di logica e restituisce il risultato al browser
     return call_api(params=api_params)
+
+@router.get("/specializzazioni")
+def proxy_get_specializzazioni():
+    """
+    Endpoint proxy che inoltra la richiesta per ottenere la lista
+    delle specializzazioni al backend.
+    """
+    api_params = APIParams(method="GET", endpoint="/specializzazioni")
+    return call_api(params=api_params)

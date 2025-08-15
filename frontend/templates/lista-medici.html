@@ -5,7 +5,25 @@
 {% block content %}
 <div class="page-header">
     <h1>Trova il Tuo Specialista</h1>
-    <p>Esplora la lista dei nostri professionisti e trova quello più adatto a te.</p>
+    <p>Usa i filtri per affinare la ricerca e trovare il professionista più adatto a te.</p>
+</div>
+
+<div class="filters-container">
+    <div class="form-group filter-group">
+        <label for="spec-search">Filtra per Specializzazione</label>
+        <div class="autocomplete-container">
+            <input type="text" id="spec-search" placeholder="Digita per cercare una specializzazione..." autocomplete="off" class="form-control">
+            <div class="autocomplete-items" id="spec-suggestions"></div>
+        </div>
+    </div>
+
+    <div class="form-group filter-group">
+        <label for="sort-by">Ordina per</label>
+        <select id="sort-by" class="form-control">
+            <option value="punteggio">Punteggio (dal più alto)</option>
+            <option value="cognome">Cognome (A-Z)</option>
+        </select>
+    </div>
 </div>
 
 <div id="medici-container" class="medici-grid">
@@ -16,15 +34,53 @@
 {% block scripts %}
 <script>
     window.addEventListener('DOMContentLoaded', async () => {
-        const container = document.getElementById('medici-container');
-        try {
-            const response = await fetch('/medici/api/list');
-            if (!response.ok) throw new Error(`Errore: ${response.status}`);
-            const medici = await response.json();
+        // Riferimenti agli elementi del DOM
+        const mediciContainer = document.getElementById('medici-container');
+        const sortSelect = document.getElementById('sort-by');
+        const specSearchInput = document.getElementById('spec-search');
+        const specSuggestionsContainer = document.getElementById('spec-suggestions');
+
+        // Stato dei filtri
+        let allSpecializations = [];
+        let selectedSpecId = null;
+        let selectedSortBy = 'punteggio';
+        let debounceTimer;
+
+        /**
+         * Funzione centrale per recuperare e mostrare i medici in base ai filtri.
+         */
+        async function fetchAndRenderMedici() {
+            mediciContainer.innerHTML = '<p>Caricamento...</p>';
             
-            container.innerHTML = '';
+            // Costruisce l'URL dell'API con i parametri di filtro
+            const params = new URLSearchParams();
+            if (selectedSpecId) {
+                params.append('specializzazione_id', selectedSpecId);
+            }
+            params.append('sort_by', selectedSortBy);
+            
+            const apiUrl = `/medici/api/list?${params.toString()}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error(`Errore: ${response.status}`);
+                const medici = await response.json();
+                
+                renderMedici(medici);
+            } catch (error) {
+                console.error("Impossibile caricare la lista dei medici:", error);
+                mediciContainer.innerHTML = '<p class="form-error">Si è verificato un errore. Riprova più tardi.</p>';
+            }
+        }
+
+        /**
+         * Funzione per renderizzare le card dei medici nel container.
+         * @param {Array} medici - La lista dei medici da visualizzare.
+         */
+        function renderMedici(medici) {
+            mediciContainer.innerHTML = '';
             if (medici.length === 0) {
-                container.innerHTML = '<p>Nessun medico trovato al momento.</p>';
+                mediciContainer.innerHTML = '<p>Nessun medico trovato con i criteri selezionati.</p>';
                 return;
             }
 
@@ -43,24 +99,89 @@
                 card.addEventListener('click', () => {
                     const token = localStorage.getItem('user_token');
                     if (token) {
-                        // Se l'utente è loggato, va al profilo del medico.
                         window.location.href = `/medici/${medico.id}`;
                     } else {
-                        // Se non è loggato, viene reindirizzato alla pagina di login.
-                        SalusNotifier.alert("Per visualizzare i dettagli del medico e prenotare una visita, è necessario effettuare l'accesso.", "Accesso Richiesto");
-                        // Piccolo ritardo per dare il tempo di leggere la notifica
-                        setTimeout(() => {
-                           window.location.href = '/pagina-login';
-                        }, 2500);
+                        SalusNotifier.alert("Per visualizzare i dettagli del medico, è necessario effettuare l'accesso.", "Accesso Richiesto");
+                        setTimeout(() => { window.location.href = '/pagina-login'; }, 2500);
                     }
                 });
-                container.appendChild(card);
+                mediciContainer.appendChild(card);
             });
-
-        } catch (error) {
-            console.error("Impossibile caricare la lista dei medici:", error);
-            container.innerHTML = '<p>Si è verificato un errore durante il caricamento dei medici. Riprova più tardi.</p>';
         }
+
+        /**
+         * Popola il contenitore dei suggerimenti per le specializzazioni.
+         * @param {Array} suggestions - Le specializzazioni da mostrare.
+         */
+        function showSpecSuggestions(suggestions) {
+            specSuggestionsContainer.innerHTML = '';
+            
+            // Aggiunge l'opzione per rimuovere il filtro
+            const allOption = document.createElement('div');
+            allOption.textContent = 'Tutte le specializzazioni';
+            allOption.addEventListener('click', () => {
+                selectedSpecId = null;
+                specSearchInput.value = '';
+                specSuggestionsContainer.innerHTML = '';
+                fetchAndRenderMedici();
+            });
+            specSuggestionsContainer.appendChild(allOption);
+
+            suggestions.forEach(spec => {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.textContent = spec.nome;
+                suggestionDiv.addEventListener('click', () => {
+                    specSearchInput.value = spec.nome;
+                    selectedSpecId = spec.id;
+                    specSuggestionsContainer.innerHTML = '';
+                    fetchAndRenderMedici();
+                });
+                specSuggestionsContainer.appendChild(suggestionDiv);
+            });
+        }
+
+        // --- INIZIALIZZAZIONE ---
+
+        // 1. Recupera le specializzazioni per il filtro
+        try {
+            const response = await fetch('/api/specializzazioni'); // Proxy non necessario, endpoint pubblico
+            allSpecializations = await response.json();
+        } catch (error) {
+            console.error("Impossibile caricare le specializzazioni", error);
+        }
+        
+        // 2. Aggiunge gli event listener ai controlli
+        sortSelect.addEventListener('change', (e) => {
+            selectedSortBy = e.target.value;
+            fetchAndRenderMedici();
+        });
+
+        specSearchInput.addEventListener('input', () => {
+            const query = specSearchInput.value.toLowerCase();
+            clearTimeout(debounceTimer);
+            
+            if (query.length === 0) {
+                selectedSpecId = null;
+                fetchAndRenderMedici();
+            }
+
+            debounceTimer = setTimeout(() => {
+                const filtered = allSpecializations.filter(spec => 
+                    spec.nome.toLowerCase().includes(query)
+                );
+                showSpecSuggestions(filtered);
+            }, 300);
+        });
+
+        // Nasconde i suggerimenti se si clicca altrove nella pagina
+        document.addEventListener('click', (e) => {
+            if (e.target !== specSearchInput) {
+                specSuggestionsContainer.innerHTML = '';
+            }
+        });
+
+        // 3. Caricamento iniziale dei medici
+        fetchAndRenderMedici();
     });
 </script>
 {% endblock %}
