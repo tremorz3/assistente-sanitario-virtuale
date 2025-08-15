@@ -862,3 +862,130 @@ a:hover {
     background-color: var(--primary-color);
     color: white;
 }
+
+/* ==============================================
+   Stili per Pagina Mappa Medici
+   ==============================================
+*/
+.map-page-container {
+    display: grid;
+    grid-template-columns: 1fr; /* Layout a colonna singola per mobile */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Layout a due colonne per schermi più grandi */
+@media (min-width: 992px) {
+    .map-page-container {
+        grid-template-columns: 400px 1fr; /* Sidebar fissa, mappa flessibile */
+        height: 70vh; /* Altezza relativa alla viewport */
+    }
+}
+
+.map-sidebar {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.map-controls {
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.map-controls .btn-form {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.map-controls .btn-form.secondary {
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+.map-controls .btn-form.secondary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#results-list-container {
+    flex-grow: 1; /* Occupa lo spazio rimanente nella sidebar */
+    overflow-y: auto; /* Aggiunge lo scroll se i risultati sono troppi */
+    margin-top: 20px;
+}
+
+#results-status {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+#results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doctor-list-item {
+    padding: 15px;
+    border: 1px solid transparent;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-left-color 0.2s ease;
+}
+
+.doctor-list-item:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    border-left: 3px solid var(--primary-color);
+}
+
+.doctor-list-item h4 {
+    margin: 0 0 5px;
+    color: var(--text-primary);
+}
+.doctor-list-item p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.doctor-list-item p.address {
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.map-container {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    min-height: 400px; /* Altezza minima su mobile */
+    width: 100%;
+    height: 100%;
+}
+
+/* ==============================================
+   Stili per Pulsante Mostra/Nascondi Password
+   ==============================================
+*/
+.password-container {
+    position: relative;
+}
+
+.password-toggle-icon {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-secondary); /* Colore grigio per l'icona */
+    transition: color 0.2s ease;
+}
+
+.password-toggle-icon:hover {
+    color: var(--primary-color); /* Colore primario al passaggio del mouse */
+}
+
+/* Regola lo spazio a destra nell'input per non sovrapporre il testo all'icona */
+.password-container input {
+    padding-right: 45px !important;
+}

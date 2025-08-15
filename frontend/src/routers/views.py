@@ -82,6 +82,11 @@ async def get_profilo_medico_page(request: Request) -> HTMLResponse:
     # L'ID del medico verrà estratto dal path nel JavaScript della pagina
     return templates.TemplateResponse("profilo-medico.html", {"request": request})
 
+@router.get("/mappa-medici", response_class=HTMLResponse)
+async def get_mappa_medici_page(request: Request) -> HTMLResponse:
+    """Mostra la pagina con la mappa interattiva per la ricerca geolocalizzata dei medici."""
+    return templates.TemplateResponse("mappa-medici.html", {"request": request})
+
 @router.get("/dashboard-medico", response_class=HTMLResponse)
 async def get_medico_dashboard_page(request: Request) -> HTMLResponse:
     """Mostra la dashboard personale del medico."""

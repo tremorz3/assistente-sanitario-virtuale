@@ -3,7 +3,8 @@ Questo modulo gestisce gli endpoint proxy per recuperare informazioni
 sui medici, come la lista completa, i dettagli di un singolo medico
 e le loro disponibilità.
 """
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Header, Query
+from typing import Optional
 
 from utils.models import APIParams
 from utils.api_client import call_api
@@ -27,6 +28,24 @@ async def proxy_get_lista_medici(request: Request):
 
     api_params = APIParams(method="GET", endpoint=backend_endpoint)
     return call_api(params=api_params)
+
+@router.get("/vicini")
+async def proxy_get_medici_vicini(
+    lat: float,
+    lon: float,
+    raggio_km: int = 20,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Proxy per inoltrare la richiesta di ricerca al backend di medici vicini.
+    Richiede autenticazione.
+    """
+    token = authorization.split(" ")[1] if authorization else None
+    
+    backend_endpoint = f"/medici/vicini?lat={lat}&lon={lon}&raggio_km={raggio_km}"
+    
+    api_params = APIParams(method="GET", endpoint=backend_endpoint)
+    return call_api(params=api_params, token=token)
 
 @router.get("/{medico_id}/details")
 async def proxy_get_dettaglio_medico(medico_id: int):
