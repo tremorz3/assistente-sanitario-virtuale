@@ -111,11 +111,30 @@ SalusNotifier.overlay.addEventListener('click', (e) => {
  * Aggiorna la visibilità degli elementi nella barra di navigazione
  * in base allo stato di login dell'utente.
  */
+/**
+ * Aggiorna la visibilità degli elementi nella barra di navigazione
+ * in base allo stato di login e al ruolo dell'utente.
+ * Questa versione è più robusta perché imposta esplicitamente lo stato
+ * di ogni link invece di nasconderli tutti e poi mostrarne alcuni.
+ */
 function updateNavbar() {
     const token = localStorage.getItem('user_token');
+    const isLoggedIn = !!token;
+    let userType = null;
+
+    // Se l'utente è loggato, decodifichiamo il token per ottenere il suo ruolo
+    if (isLoggedIn) {
+        try {
+            userType = parseJwt(token).tipo_utente;
+        } catch (error) {
+            console.error("Token non valido o malformato, logout forzato.", error);
+            logout(); // Se il token non è valido, eseguiamo il logout e interrompiamo la funzione
+            return;
+        }
+    }
 
     // Selezioniamo gli elementi della navbar
-    const navLogo = document.querySelector('.nav-logo'); // <-- NUOVO: Selezioniamo il logo
+    const navLogo = document.querySelector('.nav-logo');
     const navItems = {
         login: document.getElementById('nav-login'),
         registerPaziente: document.getElementById('nav-register-paziente'),
@@ -128,37 +147,37 @@ function updateNavbar() {
         logout: document.getElementById('nav-logout')
     };
 
-    // Nascondiamo tutto di default
-    Object.values(navItems).forEach(item => item?.classList.add('hidden'));
+    // La funzione classList.toggle(classe, condizione) è perfetta per questo:
+    // aggiunge la classe 'hidden' se la condizione è VERA, la rimuove se è FALSA.
 
-    if (token) {
-        // Utente Autenticato
-        try {
-            const userData = parseJwt(token);
-            navItems.logout?.classList.remove('hidden');
+    // Link di autenticazione: visibili solo se l'utente NON è loggato
+    navItems.login?.classList.toggle('hidden', isLoggedIn);
+    navItems.registerPaziente?.classList.toggle('hidden', isLoggedIn);
+    navItems.registerMedico?.classList.toggle('hidden', isLoggedIn);
 
-            if (userData.tipo_utente === 'paziente') {
-                if (navLogo) navLogo.href = '/'; // Per il paziente, il logo porta alla chat
-                navItems.cercaMedici?.classList.remove('hidden');
-                navItems.profiloPaziente?.classList.remove('hidden');
-            } else if (userData.tipo_utente === 'medico') {
-                // --- INIZIO MODIFICA CHIAVE ---
-                if (navLogo) navLogo.href = '/dashboard-medico'; // Per il medico, il logo porta alla dashboard
-                // --- FINE MODIFICA CHIAVE ---
-                navItems.dashboardMedico?.classList.remove('hidden');
-                navItems.gestioneDisponibilita?.classList.remove('hidden');
-                navItems.recensioniMedico?.classList.remove('hidden');
-            }
-        } catch (error) {
-            console.error("Errore nel parsing del token, logout forzato.", error);
-            logout();
+    // Link di logout: visibile solo se l'utente È loggato
+    navItems.logout?.classList.toggle('hidden', !isLoggedIn);
+
+    // === MODIFICA CHIAVE ===
+    // Link "I Nostri Medici": visibile a TUTTI (la condizione per nasconderlo è sempre falsa)
+    navItems.cercaMedici?.classList.toggle('hidden', false);
+
+    // Link specifici per il PAZIENTE
+    navItems.profiloPaziente?.classList.toggle('hidden', userType !== 'paziente');
+
+    // Link specifici per il MEDICO
+    navItems.dashboardMedico?.classList.toggle('hidden', userType !== 'medico');
+    navItems.gestioneDisponibilita?.classList.toggle('hidden', userType !== 'medico');
+    navItems.recensioniMedico?.classList.toggle('hidden', userType !== 'medico');
+    
+    // Logica per il link del logo
+    if (navLogo) {
+        if (userType === 'medico') {
+            navLogo.href = '/dashboard-medico';
+        } else {
+            // Per pazienti e utenti non loggati, punta alla home
+            navLogo.href = '/';
         }
-    } else {
-        // Utente Non Autenticato
-        if (navLogo) navLogo.href = '/'; // Per l'ospite, il logo porta alla chat
-        navItems.login?.classList.remove('hidden');
-        navItems.registerPaziente?.classList.remove('hidden');
-        navItems.registerMedico?.classList.remove('hidden');
     }
 }
 

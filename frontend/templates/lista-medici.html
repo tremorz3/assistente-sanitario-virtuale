@@ -39,8 +39,20 @@
                     <p>${medico.indirizzo_studio}</p>
                     <p class="punteggio">Punteggio: ${medico.punteggio_medio.toFixed(2)} / 5.00</p>
                 `;
+                
                 card.addEventListener('click', () => {
-                    window.location.href = `/medici/${medico.id}`;
+                    const token = localStorage.getItem('user_token');
+                    if (token) {
+                        // Se l'utente è loggato, va al profilo del medico.
+                        window.location.href = `/medici/${medico.id}`;
+                    } else {
+                        // Se non è loggato, viene reindirizzato alla pagina di login.
+                        SalusNotifier.alert("Per visualizzare i dettagli del medico e prenotare una visita, è necessario effettuare l'accesso.", "Accesso Richiesto");
+                        // Piccolo ritardo per dare il tempo di leggere la notifica
+                        setTimeout(() => {
+                           window.location.href = '/pagina-login';
+                        }, 2500);
+                    }
                 });
                 container.appendChild(card);
             });
