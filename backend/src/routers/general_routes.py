@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, HTTPException, status, Query
-from typing import List
+from typing import List, Optional
 import mariadb
 
 # Import dei modelli e delle utility necessari
@@ -35,7 +35,7 @@ async def get_specializzazioni() -> List[SpecializzazioneOut]:
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM Specializzazioni")
+        cursor.execute("SELECT * FROM Specializzazioni ORDER BY nome ASC")
         specializzazioni = cursor.fetchall()
         return [SpecializzazioneOut(**spec) for spec in specializzazioni]
     except mariadb.Error as e:
@@ -47,10 +47,16 @@ async def get_specializzazioni() -> List[SpecializzazioneOut]:
         close_db_resources(conn, cursor)
 
 @router.get("/medici", response_model=List[MedicoOut])
-async def get_lista_medici():
+async def get_lista_medici(
+    specializzazione_id: Optional[int] = Query(None, description="Filtra i medici per ID di specializzazione."),
+    sort_by: Optional[str] = Query(None, description="Ordina i medici. Valori permessi: 'punteggio', 'cognome'.")
+) -> List[MedicoOut]:
     """
     (Pubblico) Recupera la lista di tutti i medici iscritti alla piattaforma
-    con le loro informazioni principali, inclusa la specializzazione.
+    con le loro informazioni principali, inclusa la specializzazione, con possibilità di filtro e ordinamento.
+    Args:
+        specializzazione_id (Optional[int]): ID della specializzazione per filtrare i medici.
+        sort_by (Optional[str]): Criterio di ordinamento. Può essere 'punteggio' o 'cognome'. L'ordinamento predefinito è per punteggio.
     """
     conn = None
     cursor = None
@@ -59,7 +65,7 @@ async def get_lista_medici():
         cursor = conn.cursor(dictionary=True)
         
         # Query con JOIN per recuperare anche il nome della specializzazione
-        query = """
+        base_query = """
             SELECT 
                 m.id, 
                 m.nome, 
@@ -70,9 +76,22 @@ async def get_lista_medici():
                 s.nome AS specializzazione_nome
             FROM Medici m
             JOIN Specializzazioni s ON m.specializzazione_id = s.id
-            ORDER BY m.punteggio_medio DESC, m.cognome ASC
         """
-        cursor.execute(query)
+        # Lista per i parametri della query per prevenire SQL Injection
+        params = []
+        if specializzazione_id is not None:
+            base_query += " WHERE m.specializzazione_id = ?"
+            params.append(specializzazione_id)
+
+        # Aggiungiamo la clausola ORDER BY in base al parametro sort_by
+        # Usiamo un approccio "whitelist" per sicurezza, accettando solo valori noti.
+        if sort_by == 'cognome':
+            base_query += " ORDER BY m.cognome ASC, m.nome ASC"
+        else:
+            # Default: ordina per punteggio (o se sort_by == 'punteggio')
+            base_query += " ORDER BY m.punteggio_medio DESC, m.cognome ASC"
+
+        cursor.execute(base_query, tuple(params))
         
         medici = cursor.fetchall()
         return [MedicoOut(**m) for m in medici]
