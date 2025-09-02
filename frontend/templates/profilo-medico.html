@@ -1,6 +1,6 @@
 {% extends "layouts/base.html" %}
 
-{% block title %}Profilo Medico - Salus AI{% endblock %}
+{% block title %}Profilo Medico - MediClick{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -79,7 +79,7 @@
             document.getElementById('medico-citta').textContent = medico.citta;
             document.getElementById('medico-indirizzo').textContent = medico.indirizzo_studio;
             document.getElementById('medico-punteggio').textContent = medico.punteggio_medio.toFixed(2);
-            document.title = `Profilo Dr. ${medico.nome} ${medico.cognome} - Salus AI`;
+            document.title = `Profilo Dr. ${medico.nome} ${medico.cognome} - MediClick`;
             
             const disponibilita = await fetch(`/medici/api/${medicoId}/disponibilita?solo_libere=true`).then(res => res.json());
             

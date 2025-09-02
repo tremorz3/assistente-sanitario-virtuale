@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 @router.get("/autocomplete-address")
-def proxy_autocomplete_address(query: str = Query(..., min_length=3)):
+async def proxy_autocomplete_address(query: str = Query(..., min_length=3)):
     """
     Endpoint proxy che inoltra la richiesta di autocomplete al backend
     e restituisce i suggerimenti al client.
@@ -28,10 +28,19 @@ def proxy_autocomplete_address(query: str = Query(..., min_length=3)):
     return call_api(params=api_params)
 
 @router.get("/specializzazioni")
-def proxy_get_specializzazioni():
+async def proxy_get_specializzazioni():
     """
     Endpoint proxy che inoltra la richiesta per ottenere la lista
     delle specializzazioni al backend.
     """
     api_params = APIParams(method="GET", endpoint="/specializzazioni")
+    return call_api(params=api_params)
+
+@router.get("/citta")
+async def proxy_get_citta():
+    """
+    Endpoint proxy che inoltra la richiesta per ottenere la lista
+    delle città disponibili al backend.
+    """
+    api_params = APIParams(method="GET", endpoint="/citta")
     return call_api(params=api_params)

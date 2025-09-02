@@ -1,83 +1,105 @@
-import requests
-import os
-from fastapi import APIRouter, HTTPException, status
+# chat_routes.py
+"""
+Backend Chat Routes - Secure API Endpoints for LangGraph Chat System
 
-# Import dei modelli e delle utility necessari
-from utils.models import Messaggio, RichiestaChat, RichiestaOllama, RispostaOllama
-from utils.chat_setup import storico_chat, reset_chat
+Gestisce le richieste chat con autenticazione JWT e orchestrazione LangGraph.
+Implementa thread isolation per sicurezza: ogni utente ha thread privati.
+
+Architettura: FastAPI → JWT Auth → LangGraph Orchestrator → AI Response
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, Header
+from typing import Optional
+import logging
+
+from utils.auth import get_current_user, get_optional_current_user
+from utils.models import ChatMessage, ChatResponse, UserOut
+from chat.orchestrator import invoke_orchestrator, memory
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    prefix="/chat",  # prefisso comune
-    tags=["Chat AI"]
+    prefix="/chat",
+    tags=["Backend - Chat (LangGraph)"],
 )
 
-# Recupera la variabile d'ambiente una sola volta all'avvio del modulo
-OLLAMA_API_URL: str = os.getenv("OLLAMA_API_URL")
-
-@router.post("", response_model=Messaggio) # L'URL diventa /chat
-def chat_con_ai(request: RichiestaChat):
+@router.post("/message", response_model=ChatResponse)
+async def handle_chat_message(
+    chat_message: ChatMessage,  # Messaggio + session_id dal frontend proxy
+    user: Optional[UserOut] = Depends(get_optional_current_user)  # Auth opzionale: può essere None
+):
     """
-    Gestisce un singolo turno di chat. Riceve la domanda dell'utente,
-    la arricchisce con informazioni di localizzazione, interroga il modello AI
-    e restituisce la sua risposta.
+    Endpoint principale per messaggi chat con LangGraph orchestration.
+    
+    Supporta sia utenti autenticati che non autenticati.
+    Per utenti autenticati: thread privato con user ID
+    Per utenti non autenticati: thread temporaneo solo con session ID
+    
+    Flusso: Optional JWT Auth → Thread ID Generation → LangGraph → AI Response
     """
-    contenuto_utente = request.domanda
-    location_info = ""
-
-    # Cerca di ottenere un contesto di localizzazione, dando priorità
-    # alle coordinate precise fornite dal client.
-    if request.location:
-        # Se sono presenti coordinate precise, le formatta in una stringa.
-        lat = request.location.get('lat')
-        lon = request.location.get('lon')
-        if lat is not None and lon is not None:
-             location_info = f"\n[INFO POSIZIONE UTENTE: Lat={lat}, Lon={lon}]"
-    elif request.client_ip:
-        # Altrimenti, tenta un fallback usando l'IP per una posizione approssimativa.
-        try:
-            geo_response = requests.get(f"http://ip-api.com/json/{request.client_ip}")
-            geo_data = geo_response.json()
-            if geo_data.get("status") == "success":
-                citta = geo_data.get("city", "N/A")
-                regione = geo_data.get("regionName", "N/A")
-                location_info = f"\n[INFO POSIZIONE APPROSSIMATIVA UTENTE: Città={citta}, Regione={regione}]"
-        except requests.RequestException:
-            # In caso di errore nella chiamata all'API di geolocalizzazione, prosegue senza.
-            pass
-
-    # Aggiunge le informazioni di posizione, se trovate, al messaggio dell'utente.
-    if location_info:
-        contenuto_utente += location_info
-    
-    # Aggiorna la cronologia della conversazione con il messaggio completo dell'utente.
-    storico_chat.append(Messaggio(role="user", content=contenuto_utente))
-    print(f"Messaggio utente: {contenuto_utente}")
-    print(f"Storico chat attuale: {storico_chat}")
-    
-    # Prepara il payload per il modello AI, includendo l'intera cronologia.
-    payload = RichiestaOllama(messages=storico_chat)
+    # Crea thread ID diverso in base allo stato di autenticazione
+    if user:
+        # Utente autenticato: thread privato con user ID
+        thread_id = f"user_{user.id}_session_{chat_message.session_id}"
+        logger.info(f"Processing authenticated message for thread {thread_id}: {chat_message.message[:50]}...")
+    else:
+        # Utente non autenticato: thread temporaneo solo con session ID
+        thread_id = f"anonymous_session_{chat_message.session_id}"
+        logger.info(f"Processing anonymous message for thread {thread_id}: {chat_message.message[:50]}...")
     
     try:
-        # Invia la richiesta al servizio del modello AI (Ollama).
-        response = requests.post(OLLAMA_API_URL, json=payload.model_dump(), timeout=180.0)
-        response.raise_for_status()  # Solleva un'eccezione per errori HTTP (es. 4xx, 5xx).
+        # Invoca LangGraph orchestrator che gestisce agent + tools + memory
+        # L'orchestrator mantiene la cronologia conversazione usando il thread_id
+        answer = await invoke_orchestrator(thread_id, chat_message.message)
         
-        # Estrae, valida e aggiunge la risposta del modello allo storico.
-        risposta_ollama = RispostaOllama(**response.json())
-        messaggio_ai = risposta_ollama.message
-        storico_chat.append(messaggio_ai)
+        return ChatResponse(
+            response=answer,  # Risposta generata dall'AI tramite LangGraph
+            session_id=chat_message.session_id,  # Mantiene coerenza con frontend
+        )
         
-        return messaggio_ai
-    except requests.RequestException as e:
-        # Gestisce errori di rete o di comunicazione con il servizio AI.
-        raise HTTPException(status_code=503, detail=f"Errore di comunicazione con il modello AI: {e}")
+    except Exception as e:
+        logger.error(f"LangGraph orchestration failed for thread {thread_id}: {e}", exc_info=True)
+        # Converte eccezioni interne in HTTP 500 con messaggio user-friendly
+        # Non espone dettagli tecnici per sicurezza
+        raise HTTPException(
+            status_code=500,
+            detail="Mi dispiace, si è verificato un errore tecnico. Riprova."
+        )
 
-@router.post("/reset") # L'URL completo sarà /chat/reset
-def reset_chat_history():
+@router.post("/reset", response_model=dict)
+async def reset_chat_session(
+    chat_message: ChatMessage,  # Richiede solo session_id, il campo message è ignorato
+    user: Optional[UserOut] = Depends(get_optional_current_user)  # Auth opzionale
+):
     """
-    Resetta la cronologia della chat chiamando la funzione dedicata.
+    Reset completo della sessione chat: cancella tutta la cronologia conversazione.
+    
+    Supporta sia utenti autenticati che non autenticati.
+    Utilizza LangGraph MemorySaver.delete_thread() per rimuovere completamente
+    la memoria associata al thread, permettendo di ricominciare da zero.
     """
-    reset_chat()
-    return {"status": "success", "message": "Cronologia chat resettata."}
-
-
+    # Genera thread ID basato sullo stato di autenticazione
+    if user:
+        thread_id = f"user_{user.id}_session_{chat_message.session_id}"
+        logger.info(f"Chat reset requested for authenticated thread {thread_id}")
+    else:
+        thread_id = f"anonymous_session_{chat_message.session_id}"
+        logger.info(f"Chat reset requested for anonymous thread {thread_id}")
+    
+    try:
+        # Cancella completamente la cronologia conversazione dal MemorySaver LangGraph
+        memory.delete_thread(thread_id)
+        logger.info(f"Successfully deleted thread memory: {thread_id}")
+        
+        return {
+            "message": "Chat reset successfully",  # Conferma operazione riuscita
+            "thread_id": thread_id,  # ID thread cancellato (per debug)
+            "session_id": chat_message.session_id  # Session ID per frontend
+        }
+        
+    except Exception as e:
+        logger.error(f"Errore nel reset per thread {thread_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Errore durante il reset della chat. Riprova."
+        )

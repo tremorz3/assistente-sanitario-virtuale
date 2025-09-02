@@ -57,6 +57,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * =================================================================================
+ * Typing Indicator per Chat - Sistema di animazione puntini
+ * =================================================================================
+ */
+const TypingIndicator = {
+    /**
+     * Crea e mostra l'indicatore di digitazione
+     */
+    show: function() {
+        // Controlla se l'indicatore esiste già
+        if (document.getElementById('typing-indicator')) return;
+        
+        // Crea l'elemento indicatore
+        const typingDiv = document.createElement('div');
+        typingDiv.id = 'typing-indicator';
+        typingDiv.className = 'typing-indicator';
+        
+        const dotsDiv = document.createElement('div');
+        dotsDiv.className = 'typing-dots';
+        
+        // Crea i tre puntini animati
+        for (let i = 0; i < 3; i++) {
+            const span = document.createElement('span');
+            dotsDiv.appendChild(span);
+        }
+        
+        typingDiv.appendChild(dotsDiv);
+        
+        // Aggiunge l'indicatore alla chat window
+        const chatWindow = document.getElementById('chat-window');
+        if (chatWindow) {
+            chatWindow.appendChild(typingDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+    },
+    
+    /**
+     * Nasconde e rimuove l'indicatore di digitazione
+     */
+    hide: function() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+};
+
+/**
+ * =================================================================================
  * SalusNotifier - Sistema di Notifiche Personalizzato
  * =================================================================================
  */
@@ -168,7 +216,6 @@ function updateNavbar() {
         registerPaziente: document.getElementById('nav-register-paziente'),
         registerMedico: document.getElementById('nav-register-medico'),
         cercaMedici: document.getElementById('nav-cerca-medici'),
-        mappaMedici: document.getElementById('nav-mappa-medici'),
         profiloPaziente: document.getElementById('nav-profilo-paziente'),
         dashboardMedico: document.getElementById('nav-dashboard-medico'),
         gestioneDisponibilita: document.getElementById('nav-gestione-disponibilita'),
@@ -188,16 +235,15 @@ function updateNavbar() {
     navItems.logout?.classList.toggle('hidden', !isLoggedIn);
 
     // === MODIFICA CHIAVE ===
-    // Link "I Nostri Medici": visibile a TUTTI (la condizione per nasconderlo è sempre falsa)
-    navItems.cercaMedici?.classList.toggle('hidden', false);
+    // Link "I Nostri Medici": nascosto nella homepage, visibile nelle altre pagine
+    const isHomePage = window.location.pathname === '/';
+    navItems.cercaMedici?.classList.toggle('hidden', isHomePage);
 
     // Link specifici per il PAZIENTE
     if (userType === 'paziente') {
         navItems.profiloPaziente?.classList.remove('hidden');
-        navItems.mappaMedici?.classList.remove('hidden');
     } else {
         navItems.profiloPaziente?.classList.add('hidden');
-        navItems.mappaMedici?.classList.add('hidden');
     }
 
     // Link specifici per il MEDICO
