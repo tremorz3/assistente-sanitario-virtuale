@@ -1,9 +1,8 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List, Literal, Dict
+from typing import Optional, List, Literal, Dict, Any
 
 # Modelli per la registrazione Paziente e Medico
-
 class PazienteRegisration(BaseModel):
     """
     Schema Pydantic per i dati di registrazione di un nuovo paziente.
@@ -53,8 +52,6 @@ class UserLogin(BaseModel):
     email: EmailStr = Field(..., example="utente@example.com", description="Email dell'utente.")
     password: str = Field(..., description="Password dell'utente.")
 
-# In assistente-sanitario/backend/src/utils/models.py
-
 class UserOut(BaseModel):
     """
     Schema Pydantic per i dati utente da restituire.
@@ -64,7 +61,6 @@ class UserOut(BaseModel):
     email: EmailStr = Field(..., description="Email dell'utente.")
     tipo_utente: str = Field(..., description="Tipo di utente ('medico' o 'paziente').")
     nome: str = Field(..., description="Nome dell'utente (dal profilo Paziente o Medico).")
-    # Questi campi conterranno l'ID del profilo specifico (es. Medici.id o Pazienti.id)
     medico_id: Optional[int] = Field(None, description="ID del profilo Medico, se applicabile.")
     paziente_id: Optional[int] = Field(None, description="ID del profilo Paziente, se applicabile.")
     token: Optional[Token] = Field(None, description="Token di accesso JWT. (Opzionale)")
@@ -80,7 +76,9 @@ class MedicoOut(BaseModel):
     citta: str
     indirizzo_studio: str
     punteggio_medio: float
-    specializzazione_nome: str # Campo derivato dal JOIN
+    latitudine: Optional[float] = None
+    longitudine: Optional[float] = None
+    specializzazione_nome: str
 
     class Config:
         orm_mode = True
@@ -103,67 +101,32 @@ class SpecializzazioneOut(BaseModel):
     id: int
     nome: str
 
-# Modelli per la funzionalità di chat col modello AI
-class Messaggio(BaseModel):
-    """
-    Rappresenta un singolo messaggio nella cronologia della chat.
-    """
-    role: Literal["system", "user", "assistant"]
-    content: str
-
-class RichiestaChat(BaseModel):
-    """
-    Schema per la richiesta in arrivo all'endpoint /chat.
-    """
-    domanda: str
-    location: Optional[Dict[str, float]] = None
-    client_ip: Optional[str] = None
-
-class RichiestaOllama(BaseModel):
-    """
-    Schema per il payload da inviare al servizio Ollama.
-    """
-    model: str = "alibayram/medgemma:4b"
-    messages: List[Messaggio]
-    stream: bool = False
-
-class RispostaOllama(BaseModel):
-    """
-    Schema per validare la risposta ricevuta dal servizio Ollama.
-    """
-    message: Messaggio
-
 class AddressSuggestion(BaseModel):
     """
     Rappresenta un singolo suggerimento di indirizzo per l'autocomplete.
     """
-    display_address: str  # L'indirizzo formattato e pulito da mostrare all'utente
-    validation_address: str # L'indirizzo originale di Nominatim, per la validazione
+    display_address: str
+    validation_address: str
     lat: float
     lon: float
 
 # Modelli per la tabella Disponibilità
 class DisponibilitaBase(BaseModel):
     """
-    Schema base per una fascia oraria di disponibilità. Contiene i campi comuni per la creazione e l'output.
+    Schema base per una fascia oraria di disponibilità.
     """
     data_ora_inizio: datetime = Field(..., description="Inizio della fascia oraria disponibile.")
     data_ora_fine: datetime = Field(..., description="Fine della fascia oraria disponibile.")
 
 class DisponibilitaCreate(DisponibilitaBase):
     """
-    Schema utilizzato per creare una nuova disponibilità via API. Usato per validare i dati in ingresso.
-    L'ID del medico viene recuperato automaticamente dal token di autenticazione.
+    Schema utilizzato per creare una nuova disponibilità via API.
     """
     pass
 
 class DisponibilitaOut(DisponibilitaBase):
     """
-    Schema per restituire una disponibilità via API, include l'ID e lo stato.L'attributo orm_mode = True è una configurazione fondamentale che 
-    abilita la compatibilità con gli Object-Relational Mapping (ORM) come SQLAlchemy. Quando questa opzione è attivata, Pydantic è in grado di 
-    leggere i dati non solo dai tradizionali dizionari Python, ma anche direttamente dagli oggetti ORM del database. Questo significa che il 
-    modello può essere popolato automaticamente a partire da un'istanza di una tabella del database senza dover convertire manualmente l'oggetto 
-    ORM in un dizionario.
+    Schema per restituire una disponibilità via API, include l'ID e lo stato.
     """
     id: int
     is_prenotato: bool
@@ -174,21 +137,20 @@ class DisponibilitaOut(DisponibilitaBase):
 # Modelli per la tabella Prenotazione
 class PrenotazioneBase(BaseModel):
     """
-    Schema base per una prenotazione. Contiene i campi comuni per la creazione e l'output.
+    Schema base per una prenotazione.
     """
     disponibilita_id: int = Field(..., description="ID della fascia oraria che si sta prenotando.")
     note_paziente: Optional[str] = Field(None, description="Note opzionali del paziente per la visita.")
 
 class PrenotazioneCreate(PrenotazioneBase):
     """
-    Schema utilizzato per creare una nuova prenotazione via API. Usato per validare i dati in ingresso.
-    L'ID del paziente viene recuperato automaticamente dal token.
+    Schema utilizzato per creare una nuova prenotazione via API.
     """
     pass
 
 class PrenotazioneOut(PrenotazioneBase):
     """
-    Schema per restituire i dati di una prenotazione, include lo stato e la data.
+    Schema per restituire i dati di una prenotazione.
     """
     id: int
     data_prenotazione: datetime
@@ -199,8 +161,7 @@ class PrenotazioneOut(PrenotazioneBase):
 
 class PrenotazioneDetailOut(PrenotazioneOut):
     """
-    Schema esteso per restituire i dettagli di una prenotazione,
-    incluso il nome del medico e l'orario della visita.
+    Schema esteso per i dettagli di una prenotazione per il paziente.
     """
     medico_nome: str
     medico_cognome: str
@@ -208,8 +169,7 @@ class PrenotazioneDetailOut(PrenotazioneOut):
 
 class PrenotazioneMedicoDetailOut(PrenotazioneOut):
     """
-    Schema esteso per la vista del medico, che include i dettagli
-    del paziente e l'orario esatto della visita.
+    Schema esteso per i dettagli di una prenotazione per il medico.
     """
     paziente_nome: str
     paziente_cognome: str
@@ -219,15 +179,13 @@ class PrenotazioneMedicoDetailOut(PrenotazioneOut):
 class PrenotazioneUpdate(BaseModel):
     """
     Schema utilizzato per aggiornare lo stato di una prenotazione.
-    Accetta solo i valori permessi per lo stato. Questo modello garantisce che tramite l'API si possa aggiornare solo il campo stato di una
-    prenotazione e che i valori accettati siano limitati a "Completata" o "Cancellata", prevenendo l'invio di dati non validi.
     """
     stato: Literal['Completata', 'Cancellata']
 
 # Modelli per la tabella Valutazione
 class ValutazioneBase(BaseModel):
     """
-    Schema base per una valutazione. Contiene i campi comuni per la creazione e l'output.
+    Schema base per una valutazione.
     """
     prenotazione_id: int = Field(..., description="ID della prenotazione da valutare.")
     punteggio: int = Field(..., ge=1, le=5, description="Punteggio da 1 a 5.")
@@ -235,17 +193,31 @@ class ValutazioneBase(BaseModel):
 
 class ValutazioneCreate(ValutazioneBase):
     """
-    Schema per creare una nuova valutazione via API. Usato per validare i dati in ingresso.
-    L'ID del paziente e del medico vengono recuperati automaticamente.
+    Schema per creare una nuova valutazione via API.
     """
     pass
 
 class ValutazioneOut(ValutazioneBase):
     """
-    Schema per restituire i dati di una valutazione.
+    Schema per restituire i dati di a valutazione.
     """
     id: int
     data_valutazione: datetime
 
     class Config:
         orm_mode = True
+
+# Modelli per la funzionalità chat
+class ChatMessage(BaseModel):
+    """
+    Schema per i messaggi inviati alla chat AI.
+    """
+    message: str = Field(..., description="Il messaggio dell'utente da inviare al chatbot.")
+    session_id: str = Field(..., description="ID della sessione di conversazione.")
+
+class ChatResponse(BaseModel):
+    """
+    Schema per le risposte del chatbot AI.
+    """
+    response: str = Field(..., description="La risposta generata dal chatbot.")
+    session_id: str = Field(..., description="ID della sessione di conversazione.")

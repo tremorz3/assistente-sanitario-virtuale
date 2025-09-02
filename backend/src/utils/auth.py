@@ -12,6 +12,7 @@ from passlib.context import CryptContext
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Header
 import mariadb
 
 from utils.models import TokenData, UserOut
@@ -160,4 +161,58 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(http_be
         raise HTTPException(status_code=500, detail="Database error during user retrieval")
     finally:
         close_db_resources(conn, cursor)
+
+# Dipendenza opzionale per autenticazione
+def get_optional_current_user(authorization: Optional[str] = Header(None)) -> Optional[UserOut]:
+    """
+    Dipendenza FastAPI per ottenere l'utente corrente se autenticato, altrimenti None.
+    
+    Questa funzione permette di avere endpoint che funzionano sia per utenti 
+    autenticati che non autenticati.
+    
+    Args:
+        authorization (Optional[str]): Header Authorization se presente
+        
+    Returns:
+        Optional[UserOut]: Utente se autenticato, None altrimenti
+    """
+    if not authorization or not authorization.startswith('Bearer '):
+        return None
+    
+    try:
+        token = authorization.split(' ')[1]
+        token_data: TokenData = verify_token(token)
+        
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            
+            query = """
+                SELECT
+                    u.id, u.email, u.tipo_utente,
+                    COALESCE(p.nome, m.nome) AS nome,
+                    p.id AS paziente_id,
+                    m.id AS medico_id
+                FROM Utenti u
+                LEFT JOIN Pazienti p ON u.id = p.utente_id
+                LEFT JOIN Medici m ON u.id = m.utente_id
+                WHERE u.id = ?
+            """
+            cursor.execute(query, (token_data.id,))
+            user_data = cursor.fetchone()
+            
+            if user_data is None or user_data.get('nome') is None:
+                return None
+                
+            return UserOut(**user_data)
+            
+        except mariadb.Error:
+            return None
+        finally:
+            close_db_resources(conn, cursor)
+            
+    except (HTTPException, JWTError):
+        return None
 

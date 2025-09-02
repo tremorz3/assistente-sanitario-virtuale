@@ -294,6 +294,65 @@ a:hover {
     color: var(--text-primary);
     align-self: flex-start;
     border-bottom-left-radius: 4px;
+    text-align: left !important;
+}
+
+.assistant-message p {
+    text-align: left !important;
+    margin: 0;
+}
+
+/* ==============================================
+   Stili per Typing Indicator nella Chat
+   ==============================================
+*/
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 18px;
+    max-width: 85%;
+    background-color: #333;
+    color: var(--text-primary);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.typing-dots span {
+    height: 8px;
+    width: 8px;
+    background-color: #999;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
 }
 
 #geo-status {
@@ -306,6 +365,7 @@ a:hover {
 #chat-form {
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
 #chatInput {
@@ -318,7 +378,7 @@ a:hover {
     resize: none;
     font-family: 'Poppins', sans-serif;
 }
-#chat-form button {
+#chat-form button, #chat-window .quick-action-btn {
     padding: 10px 20px;
     border-radius: 20px;
     border: none;
@@ -326,9 +386,27 @@ a:hover {
     color: white;
     cursor: pointer;
     transition: background-color 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: normal;
+    box-sizing: border-box;
 }
-#chat-form button:hover {
+#chat-form button:hover, #chat-window .quick-action-btn:hover {
     background-color: var(--primary-color-hover);
+}
+
+/* Reset button - sized to match Invia button */
+#reset-chat-btn {
+    width: auto;
+    min-width: 60px;
+    padding: 10px 15px; /* Leggermente meno padding per compensare il testo più lungo */
+}
+
+.chat-disclaimer {
+    text-align: center;
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
 }
 
 .features-section {
@@ -577,6 +655,11 @@ a:hover {
 .medico-card .punteggio {
     font-weight: bold;
     color: #28a745; /* Verde */
+}
+.medico-card .distanza {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.9rem;
 }
 
 /* Stili per la pagina del profilo singolo */
@@ -988,4 +1071,341 @@ a:hover {
 /* Regola lo spazio a destra nell'input per non sovrapporre il testo all'icona */
 .password-container input {
     padding-right: 45px !important;
+}
+
+/* ==============================================
+   Stili per Actions Container e Modal
+   ============================================== */
+
+.actions-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.action-btn {
+    flex: 1;
+    max-width: 200px;
+    position: relative;
+    font-weight: 600;
+}
+
+.action-.secondary {
+    background-color: #555;
+    color: var(--text-primary);
+}
+
+.action-btn.secondary:hover {
+    background-color: #666;
+}
+
+.filter-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc3545;
+    color: white;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+/* Modal Headers e Footer */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-footer .btn-form {
+    width: auto;
+    min-width: 120px;
+}
+
+/* Modal Large per la Mappa */
+.modal-large {
+    max-width: 90%;
+    width: 1200px;
+    margin: 5% auto;
+}
+
+/* Container Mappa Modal */
+.map-modal-container {
+    display: flex;
+    height: 600px;
+    gap: 20px;
+}
+
+.map-modal-sidebar {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#modal-map {
+    flex: 1;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.map-modal-sidebar .map-controls {
+    background-color: var(--bg-dark-primary);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+#modal-results-list-container {
+    flex: 1;
+    background-color: var(--bg-dark-primary);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+#modal-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#modal-results-status {
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+/* Responsive per Modal */
+@media (max-width: 768px) {
+    .actions-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-large {
+        width: 95%;
+        margin: 2% auto;
+    }
+    
+    .map-modal-container {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .map-modal-sidebar {
+        width: 100%;
+    }
+    
+    #modal-map {
+        height: 400px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-footer .btn-form {
+        width: 100%;
+    }
+}
+
+/* ==============================================
+   Stili per Bottoni di Azione Rapida nella Chat
+   ============================================== */
+
+.quick-actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0;
+    text-align: center;
+}
+
+.quick-actions-text {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.quick-actions-container .quick-action-btn {
+    max-width: 250px;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+/* ==============================================
+   Stili per Sezione Booking Homepage - FLEX OPTIMIZED
+   ============================================== */
+
+.booking-section {
+    text-align: center;
+    padding: 25px 20px;
+    margin: 20px auto;
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-width: 700px; /* Stessa larghezza del chat-container */
+}
+
+.booking-section h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 30px;
+}
+
+.booking-form-container {
+    display: flex;
+    gap: 20px; /* Spazio uniforme tra tutti i componenti */
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 900px; /* Più largo per sfruttare lo spazio */
+    margin: 0 auto;
+}
+
+.booking-input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Input groups (specializzazione e città) - più larghi */
+.booking-input-group:not(:last-child) {
+    flex: 2; /* Prende 2 parti dello spazio disponibile */
+    min-width: 0; /* Permette shrinking se necessario */
+}
+
+/* Gruppo del bottone - più piccolo ma proporzionato */
+.booking-input-group:last-child {
+    flex: 1; /* Prende 1 parte dello spazio disponibile */
+    justify-content: flex-end;
+    align-items: flex-end;
+    min-width: 0;
+}
+
+.booking-input-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.booking-input {
+    padding: 12px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.booking-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.booking-search-btn {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    height: fit-content;
+    width: 100%; /* Occupa tutto lo spazio del suo container */
+    max-width: 120px; /* Limite massimo per non diventare troppo largo */
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+
+/* Stili specifici per autocomplete nella sezione booking */
+.booking-section .autocomplete-items {
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 0 0 6px 6px;
+    /* Assicura che lo scrolling funzioni sempre */
+    overflow-x: hidden;
+    scrollbar-width: thin;
+}
+
+.booking-section .autocomplete-items div {
+    padding: 12px 15px;
+    font-size: 0.95rem;
+}
+
+.booking-section .autocomplete-items .show-all-option {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border-top: 1px solid var(--border-color);
+}
+
+.booking-section .autocomplete-items .show-all-option:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.booking-section .autocomplete-items .near-me-option {
+    background-color: #2a5d31;
+    color: #d4edda;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.booking-section .autocomplete-items .near-me-option:hover {
+    background-color: #1e4620;
+}
+
+/* Classe aggiuntiva per forzare lo scrolling quando si visualizzano tutte le specializzazioni */
+.booking-section .autocomplete-items.show-all-active {
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: block !important;
+}
+
+/* Responsive per la sezione booking */
+@media (max-width: 768px) {
+    .booking-form-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .booking-input-group {
+        min-width: unset;
+        max-width: unset;
+    }
+    
+    .booking-section {
+        margin: 40px 10px;
+        padding: 30px 15px;
+    }
+    
+    .booking-section h2 {
+        font-size: 1.7rem;
+    }
 }

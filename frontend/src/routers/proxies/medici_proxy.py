@@ -34,6 +34,7 @@ async def proxy_get_medici_vicini(
     lat: float,
     lon: float,
     raggio_km: int = 20,
+    specializzazione_id: Optional[int] = None,
     authorization: Optional[str] = Header(None)
 ):
     """
@@ -43,9 +44,12 @@ async def proxy_get_medici_vicini(
     token = authorization.split(" ")[1] if authorization else None
     
     backend_endpoint = f"/medici/vicini?lat={lat}&lon={lon}&raggio_km={raggio_km}"
+    if specializzazione_id:
+        backend_endpoint += f"&specializzazione_id={specializzazione_id}"
     
     api_params = APIParams(method="GET", endpoint=backend_endpoint)
     return call_api(params=api_params, token=token)
+
 
 @router.get("/{medico_id}/details")
 async def proxy_get_dettaglio_medico(medico_id: int):
