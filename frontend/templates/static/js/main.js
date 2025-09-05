@@ -185,13 +185,7 @@ SalusNotifier.overlay.addEventListener('click', (e) => {
 
 /**
  * Aggiorna la visibilità degli elementi nella barra di navigazione
- * in base allo stato di login dell'utente.
- */
-/**
- * Aggiorna la visibilità degli elementi nella barra di navigazione
  * in base allo stato di login e al ruolo dell'utente.
- * Questa versione è più robusta perché imposta esplicitamente lo stato
- * di ogni link invece di nasconderli tutti e poi mostrarne alcuni.
  */
 function updateNavbar() {
     const token = localStorage.getItem('user_token');
@@ -234,17 +228,12 @@ function updateNavbar() {
     // Link di logout: visibile solo se l'utente È loggato
     navItems.logout?.classList.toggle('hidden', !isLoggedIn);
 
-    // === MODIFICA CHIAVE ===
-    // Link "I Nostri Medici": nascosto nella homepage, visibile nelle altre pagine
-    const isHomePage = window.location.pathname === '/';
-    navItems.cercaMedici?.classList.toggle('hidden', isHomePage);
+    // Link "I Nostri Medici": visibile per tutti tranne che per i medici.
+    const isMedico = userType === 'medico';
+    navItems.cercaMedici?.classList.toggle('hidden', isMedico);
 
     // Link specifici per il PAZIENTE
-    if (userType === 'paziente') {
-        navItems.profiloPaziente?.classList.remove('hidden');
-    } else {
-        navItems.profiloPaziente?.classList.add('hidden');
-    }
+    navItems.profiloPaziente?.classList.toggle('hidden', userType !== 'paziente');
 
     // Link specifici per il MEDICO
     navItems.dashboardMedico?.classList.toggle('hidden', userType !== 'medico');

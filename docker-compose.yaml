@@ -29,6 +29,14 @@ services:
       - "11434:11434"
     volumes:
       - ./ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    # Questo comando personalizzato avvia Ollama e poi scarica i modelli necessari solo se non presenti.
+    command: >
+      "ollama serve & 
+       sleep 5 && 
+       (ollama list | grep -q 'qwen2.5:7b-instruct-q6_K' || ollama pull qwen2.5:7b-instruct-q6_K) && 
+       (ollama list | grep -q 'snowflake-arctic-embed2' || ollama pull snowflake-arctic-embed2) && 
+       wait"
     healthcheck:
       test: ["CMD", "ollama", "list"]
       interval: 10s

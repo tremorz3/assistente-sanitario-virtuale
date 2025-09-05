@@ -19,7 +19,7 @@
 </div>
 
 <!-- Modal Filtri -->
-<div id="filters-modal" class="modal" style="display: none;">
+<div id="filters-modal" class="modal is-centered hidden"> 
     <div class="modal-content">
         <div class="modal-header">
             <h3>Filtri di Ricerca</h3>
@@ -143,57 +143,54 @@
 
         // Stato dell'applicazione
         let allSpecializations = [];
-        let allCities = [];
+        // --- INIZIO MODIFICA: Rimuoviamo allCities, non serve più ---
+        // let allCities = []; 
+        // --- FINE MODIFICA ---
         let selectedSpecId = null;
         let selectedCity = null;
         let selectedDateDisponibili = '';
         let selectedSortBy = 'punteggio';
         let selectedCoords = null;
-        let originalCoordsFromUrl = null; // Coordinate originali dall'URL
-        let userLocation = null; // Posizione utente per geolocalizzazione
-        let selectedRadius = 20; // Raggio di ricerca in km
+        let originalCoordsFromUrl = null; 
+        let userLocation = null; 
+        let selectedRadius = 20; 
         let modalMap = null;
         let doctorMarkersLayer = null;
         let userMarkerLayer = null;
         let debounceTimer;
-        let isUpdatingFields = false; // Flag per evitare loop di sincronizzazione
+        let isUpdatingFields = false;
 
-        // Funzioni di sincronizzazione
+        function updateRadiusControlState() {
+            const hasLocation = citySearchInput.value.trim() !== '';
+            raggioRicercaSelect.disabled = !hasLocation;
+        }
+
         function syncFieldsFromCityToMap(cityValue, coords = null, skipMapUpdate = false) {
-            // Sincronizzazione rimossa - la mappa ora segue solo i filtri principali
             console.log('Aggiornato campo città:', cityValue);
         }
         
         function syncFieldsFromMapToCity(addressValue, coords = null, skipCityUpdate = false) {
-            // Sincronizzazione rimossa - la mappa non ha più controlli propri
             console.log('Filtri aggiornati dalla mappa (legacy):', addressValue);
         }
 
-        // Icone per i marcatori della mappa
         const redIcon = new L.Icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
             iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
-        // FUNZIONI PRINCIPALI
-
         async function fetchAndRenderMedici() {
             mediciContainer.innerHTML = '<p>Caricamento...</p>';
             const params = new URLSearchParams();
             
-            // Usa la ricerca geografica se abbiamo le coordinate
             if (selectedCoords) {
-                // Usa l'endpoint di ricerca geografica pubblica
                 params.append('lat', selectedCoords.lat);
                 params.append('lon', selectedCoords.lon);
-                params.append('raggio_km', '20'); // Raggio di default
+                params.append('raggio_km', '20');
                 if (selectedSpecId) params.append('specializzazione_id', selectedSpecId);
                 
                 try {
-                    const response = await callApi(`/medici/api/vicini?${params.toString()}`);
-                    if (!response.ok) throw new Error(`Errore: ${response.status}`);
-                    const medici = await response.json();
+                    const medici = await callApi(`/medici/api/vicini?${params.toString()}`);
                     renderMedici(medici);
                     updateFiltersCount();
                 } catch (error) {
@@ -201,7 +198,6 @@
                     mediciContainer.innerHTML = '<p class="form-error">Errore nel caricamento geografico. Riprova.</p>';
                 }
             } else {
-                // Usa la ricerca normale per città/specializzazione
                 if (selectedSpecId) params.append('specializzazione_id', selectedSpecId);
                 if (selectedCity) params.append('citta', selectedCity);
                 if (selectedDateDisponibili) params.append('date_disponibili', selectedDateDisponibili);
@@ -230,33 +226,15 @@
             medici.forEach(medico => {
                 const card = document.createElement('div');
                 card.className = 'medico-card';
-                
-                // Aggiungi la distanza se disponibile (ricerca geografica)
-                const distanzaInfo = medico.distanza_km ? 
-                    `<p class="distanza">📍 ${medico.distanza_km.toFixed(1)} km di distanza</p>` : '';
-                
-                card.innerHTML = `
-                    <h2>Dr. ${medico.nome} ${medico.cognome}</h2>
-                    <p class="specializzazione">${medico.specializzazione_nome}</p>
-                    <p>${medico.citta}</p>
-                    <p>${medico.indirizzo_studio}</p>
-                    ${distanzaInfo}
-                    <p class="punteggio">Punteggio: ${medico.punteggio_medio.toFixed(2)} / 5.00</p>
-                `;
-                card.addEventListener('click', () => {
-                    window.location.href = `/medici/${medico.id}`;
-                });
+                const distanzaInfo = medico.distanza_km ? `<p class="distanza">📍 ${medico.distanza_km.toFixed(1)} km di distanza</p>` : '';
+                card.innerHTML = `<h2>Dr. ${medico.nome} ${medico.cognome}</h2><p class="specializzazione">${medico.specializzazione_nome}</p><p>${medico.citta}</p><p>${medico.indirizzo_studio}</p>${distanzaInfo}<p class="punteggio">Punteggio: ${medico.punteggio_medio.toFixed(2)} / 5.00</p>`;
+                card.addEventListener('click', () => { window.location.href = `/medici/${medico.id}`; });
                 mediciContainer.appendChild(card);
             });
         }
 
         function updateFiltersCount() {
-            const count = (selectedSpecId ? 1 : 0) + 
-                         (selectedCity ? 1 : 0) + 
-                         (selectedDateDisponibili ? 1 : 0) + 
-                         (selectedCoords ? 1 : 0) + 
-                         (selectedRadius !== 20 ? 1 : 0) + 
-                         (selectedSortBy !== 'punteggio' ? 1 : 0);
+            const count = (selectedSpecId ? 1 : 0) + (selectedCity ? 1 : 0) + (selectedDateDisponibili ? 1 : 0) + (selectedCoords ? 1 : 0) + (selectedRadius !== 20 ? 1 : 0) + (selectedSortBy !== 'punteggio' ? 1 : 0);
             if (count > 0) {
                 activeFiltersCount.textContent = count;
                 activeFiltersCount.style.display = 'block';
@@ -265,14 +243,9 @@
             }
         }
 
-        // GESTIONE MODAL
-
-        function openFiltersModal() {
-            filtersModal.style.display = 'block';
-        }
-
+        function openFiltersModal() { filtersModal.classList.remove('hidden'); }
         function closeFiltersModalFunc() {
-            filtersModal.style.display = 'none';
+            filtersModal.classList.add('hidden');
             specSuggestionsContainer.innerHTML = '';
             citySuggestionsContainer.innerHTML = '';
         }
@@ -282,168 +255,102 @@
             setTimeout(() => {
                 if (!modalMap) {
                     modalMap = L.map('modal-map').setView([41.902782, 12.496366], 12);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        maxZoom: 19,
-                        attribution: '© OpenStreetMap'
-                    }).addTo(modalMap);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(modalMap);
                     doctorMarkersLayer = L.layerGroup().addTo(modalMap);
                     userMarkerLayer = L.layerGroup().addTo(modalMap);
                 }
                 modalMap.invalidateSize();
-                
-                // Carica automaticamente i medici basandosi sui filtri attivi
                 loadDoctorsOnMap();
             }, 100);
         }
+        function closeMapModalFunc() { mapModal.style.display = 'none'; }
 
-        function closeMapModalFunc() {
-            mapModal.style.display = 'none';
-        }
-
-        // Helper per ottenere coordinate approssimative delle città principali italiane
         function getCityCoordinates(cityName) {
-            const cityCoords = {
-                'roma': { lat: 41.9028, lon: 12.4964 },
-                'milano': { lat: 45.4642, lon: 9.1900 },
-                'napoli': { lat: 40.8518, lon: 14.2681 },
-                'torino': { lat: 45.0703, lon: 7.6869 },
-                'palermo': { lat: 38.1157, lon: 13.3613 },
-                'genova': { lat: 44.4056, lon: 8.9463 },
-                'bologna': { lat: 44.4949, lon: 11.3426 },
-                'firenze': { lat: 43.7696, lon: 11.2558 },
-                'bari': { lat: 41.1171, lon: 16.8719 },
-                'catania': { lat: 37.5079, lon: 15.0830 },
-                'venezia': { lat: 45.4408, lon: 12.3155 },
-                'verona': { lat: 45.4384, lon: 10.9916 },
-                'messina': { lat: 38.1938, lon: 15.5540 },
-                'padova': { lat: 45.4064, lon: 11.8768 },
-                'trieste': { lat: 45.6495, lon: 13.7768 }
-            };
-            
+            const cityCoords = { 'roma': { lat: 41.9028, lon: 12.4964 }, 'milano': { lat: 45.4642, lon: 9.1900 }, 'napoli': { lat: 40.8518, lon: 14.2681 }, 'torino': { lat: 45.0703, lon: 7.6869 }, 'palermo': { lat: 38.1157, lon: 13.3613 }, 'genova': { lat: 44.4056, lon: 8.9463 }, 'bologna': { lat: 44.4949, lon: 11.3426 }, 'firenze': { lat: 43.7696, lon: 11.2558 }, 'bari': { lat: 41.1171, lon: 16.8719 }, 'catania': { lat: 37.5079, lon: 15.0830 }, 'venezia': { lat: 45.4408, lon: 12.3155 }, 'verona': { lat: 45.4384, lon: 10.9916 }, 'messina': { lat: 38.1938, lon: 15.5540 }, 'padova': { lat: 45.4064, lon: 11.8768 }, 'trieste': { lat: 45.6495, lon: 13.7768 } };
             const normalizedCity = cityName.toLowerCase().trim();
             return cityCoords[normalizedCity] || null;
         }
 
         async function loadDoctorsOnMap() {
             console.log('loadDoctorsOnMap - Coords:', selectedCoords, 'City:', selectedCity, 'Radius:', selectedRadius);
-            
             modalResultsStatus.textContent = 'Ricerca in corso...';
             modalResultsList.innerHTML = '';
             doctorMarkersLayer.clearLayers();
             userMarkerLayer.clearLayers();
-            
             let mapCenter = null;
             let doctors = [];
             
             try {
-                // Caso 1: Ricerca geografica con coordinate specifiche
+                let apiEndpoint = '';
                 if (selectedCoords) {
                     const { lat, lon } = selectedCoords;
                     mapCenter = [lat, lon];
-                    
-                    // Aggiungi marker della posizione utente
                     L.marker([lat, lon], { icon: redIcon }).addTo(userMarkerLayer).bindPopup('La tua posizione').openPopup();
-                    
-                    let apiEndpoint = `/medici/api/vicini?lat=${lat}&lon=${lon}&raggio_km=${selectedRadius}`;
-                    if (selectedSpecId) {
-                        apiEndpoint += `&specializzazione_id=${selectedSpecId}`;
-                    }
-                    
-                    doctors = await callApi(apiEndpoint);
-                    console.log('Ricerca geografica - Medici ricevuti:', doctors.length, doctors);
-                    
-                } 
-                // Caso 2: Ricerca per città senza coordinate geografiche specifiche
-                else if (selectedCity) {
-                    // Prova a ottenere coordinate della città per centrare la mappa
+                    apiEndpoint = `/medici/api/vicini?lat=${lat}&lon=${lon}&raggio_km=${selectedRadius}`;
+                    if (selectedSpecId) apiEndpoint += `&specializzazione_id=${selectedSpecId}`;
+                } else if (selectedCity) {
                     const cityCoords = getCityCoordinates(selectedCity);
                     if (cityCoords) {
                         mapCenter = [cityCoords.lat, cityCoords.lon];
-                        // Aggiungi marker per indicare la città
                         L.marker([cityCoords.lat, cityCoords.lon], { icon: redIcon }).addTo(userMarkerLayer).bindPopup(`Ricerca a ${selectedCity}`).openPopup();
                     }
-                    
-                    // Usa l'endpoint normale dei medici con filtro città
-                    let apiEndpoint = `/medici/api/list?citta=${encodeURIComponent(selectedCity)}`;
-                    if (selectedSpecId) {
-                        apiEndpoint += `&specializzazione_id=${selectedSpecId}`;
-                    }
-                    if (selectedDateDisponibili) {
-                        apiEndpoint += `&date_disponibili=${selectedDateDisponibili}`;
-                    }
-                    if (selectedSortBy) {
-                        apiEndpoint += `&sort_by=${selectedSortBy}`;
-                    }
-                    
-                    doctors = await callApi(apiEndpoint);
-                    console.log('Ricerca per città - Medici ricevuti:', doctors.length, doctors);
-                    
+                    apiEndpoint = `/medici/api/list?citta=${encodeURIComponent(selectedCity)}`;
+                    if (selectedSpecId) apiEndpoint += `&specializzazione_id=${selectedSpecId}`;
+                    if (selectedDateDisponibili) apiEndpoint += `&date_disponibili=${selectedDateDisponibili}`;
+                    if (selectedSortBy) apiEndpoint += `&sort_by=${selectedSortBy}`;
                 } else {
-                    modalResultsStatus.textContent = 'Imposta una posizione ("Vicino a me" o un indirizzo specifico) o seleziona una città nei filtri per visualizzare i medici sulla mappa.';
-                    return;
+                    const defaultCity = 'Roma';
+                    modalResultsStatus.textContent = `Nessun filtro di posizione attivo. Mostro i medici a ${defaultCity}.`;
+                    const cityCoords = getCityCoordinates(defaultCity.toLowerCase());
+                    if (cityCoords) mapCenter = [cityCoords.lat, cityCoords.lon];
+                    apiEndpoint = `/medici/api/list?citta=${encodeURIComponent(defaultCity)}`;
+                    const otherParams = new URLSearchParams();
+                    if (selectedSpecId) otherParams.append('specializzazione_id', selectedSpecId);
+                    if (selectedDateDisponibili) otherParams.append('date_disponibili', selectedDateDisponibili);
+                    if (selectedSortBy) otherParams.append('sort_by', selectedSortBy);
+                    const paramsString = otherParams.toString();
+                    if (paramsString) apiEndpoint += `&${paramsString}`;
                 }
-
-                // Gestione dei risultati comuni a entrambi i casi
+                doctors = await callApi(apiEndpoint);
                 if (doctors.length === 0) {
-                    const searchType = selectedCoords ? `in un raggio di ${selectedRadius} km` : `nella città di ${selectedCity}`;
+                    let searchType = "con i filtri attuali";
+                    if(selectedCoords) searchType = `in un raggio di ${selectedRadius} km`;
+                    else if(selectedCity) searchType = `nella città di ${selectedCity}`;
+                    else searchType = `a Roma`;
                     modalResultsStatus.textContent = `Nessun medico trovato ${searchType}.`;
+                    if (mapCenter) modalMap.setView(mapCenter, 12);
                     return;
                 }
-
-                modalResultsStatus.textContent = `Trovati ${doctors.length} medici:`;
-                
-                // Se abbiamo un centro per la mappa, inizializziamo i bounds con esso
-                const markerBounds = mapCenter ? [mapCenter] : [];
-
-                doctors.forEach((medico, index) => {
-                    console.log(`Medico ${index}:`, {
-                        nome: medico.nome,
-                        cognome: medico.cognome,
-                        latitudine: medico.latitudine,
-                        longitudine: medico.longitudine,
-                        hasCoords: medico.latitudine != null && medico.longitudine != null
-                    });
-                    
-                    const coords = [medico.latitudine, medico.longitudine];
-                    markerBounds.push(coords);
-                    
-                    // Crea il popup content, gestendo il caso con o senza distanza
-                    let popupContent = `<b>Dr. ${medico.nome} ${medico.cognome}</b><br>
-                        ${medico.specializzazione_nome}<br><i>${medico.indirizzo_studio}</i><br>
-                        Punteggio: ${medico.punteggio_medio.toFixed(2)}/5`;
-                    
-                    // Aggiungi distanza solo se disponibile (ricerca geografica)
-                    if (medico.distanza_km !== undefined) {
-                        popupContent += `<br>Distanza: ${medico.distanza_km.toFixed(1)} km`;
+                if (!selectedCity && !selectedCoords) modalResultsStatus.textContent = `Trovati ${doctors.length} medici a Roma:`;
+                else modalResultsStatus.textContent = `Trovati ${doctors.length} medici:`;
+                const markerBounds = [];
+                doctors.forEach((medico) => {
+                    if (medico.latitudine != null && medico.longitudine != null) {
+                        const coords = [medico.latitudine, medico.longitudine];
+                        markerBounds.push(coords);
+                        let popupContent = `<b>Dr. ${medico.nome} ${medico.cognome}</b><br>${medico.specializzazione_nome}<br><i>${medico.indirizzo_studio}</i><br>Punteggio: ${medico.punteggio_medio.toFixed(2)}/5`;
+                        if (medico.distanza_km !== undefined) popupContent += `<br>Distanza: ${medico.distanza_km.toFixed(1)} km`;
+                        L.marker(coords).addTo(doctorMarkersLayer).bindPopup(popupContent);
                     }
-                    
-                    L.marker(coords).addTo(doctorMarkersLayer).bindPopup(popupContent);
-
                     const li = document.createElement('li');
                     li.className = 'doctor-list-item';
-                    
-                    // Crea il titolo con o senza distanza
                     const titleDistance = medico.distanza_km !== undefined ? ` (${medico.distanza_km.toFixed(1)} km)` : '';
-                    li.innerHTML = `<h4>Dr. ${medico.nome} ${medico.cognome}${titleDistance}</h4>
-                        <p>${medico.specializzazione_nome}</p><p class="address">${medico.indirizzo_studio}</p>`;
-                    
+                    li.innerHTML = `<h4>Dr. ${medico.nome} ${medico.cognome}${titleDistance}</h4><p>${medico.specializzazione_nome}</p><p class="address">${medico.indirizzo_studio}</p>`;
                     li.addEventListener('click', () => {
-                        modalMap.setView(coords, 15);
-                        doctorMarkersLayer.eachLayer(layer => {
-                            if (layer.getLatLng().equals(L.latLng(coords))) layer.openPopup();
-                        });
+                        if (medico.latitudine != null && medico.longitudine != null) {
+                            modalMap.setView([medico.latitudine, medico.longitudine], 15);
+                            doctorMarkersLayer.eachLayer(layer => { if (layer.getLatLng().equals(L.latLng([medico.latitudine, medico.longitudine]))) layer.openPopup(); });
+                        }
                     });
                     modalResultsList.appendChild(li);
                 });
-
-                modalMap.fitBounds(markerBounds, { padding: [20, 20] });
+                if (markerBounds.length > 0) modalMap.fitBounds(markerBounds, { padding: [50, 50] });
+                else if (mapCenter) modalMap.setView(mapCenter, 12);
             } catch (error) {
                 console.error('Errore ricerca medici:', error);
                 modalResultsStatus.textContent = 'Errore durante la ricerca.';
             }
         }
-
-        // AUTOCOMPLETE E SUGGERIMENTI
 
         function showSpecSuggestions(suggestions) {
             specSuggestionsContainer.innerHTML = '';
@@ -455,7 +362,6 @@
                 specSuggestionsContainer.innerHTML = '';
             });
             specSuggestionsContainer.appendChild(allOption);
-
             suggestions.forEach(spec => {
                 const div = document.createElement('div');
                 div.textContent = spec.nome;
@@ -468,10 +374,9 @@
             });
         }
 
-        function showCitySuggestions(citySuggestions, addressSuggestions = [], showNearMe = false) {
+        // --- INIZIO MODIFICA CHIAVE ---
+        function showCitySuggestions(addressSuggestions = [], showNearMe = false) {
             citySuggestionsContainer.innerHTML = '';
-            
-            // Aggiunge "Vicino a me" se la geolocalizzazione è disponibile
             if (showNearMe && userLocation) {
                 const nearMeDiv = document.createElement('div');
                 nearMeDiv.textContent = '📍 Vicino a me';
@@ -481,46 +386,11 @@
                     citySearchInput.value = 'Vicino a me (ricerca geografica)';
                     selectedCity = null;
                     selectedCoords = userLocation;
-                    syncFieldsFromCityToMap('Vicino a me (ricerca geografica)', userLocation);
                     citySuggestionsContainer.innerHTML = '';
+                    updateRadiusControlState();
                 });
                 citySuggestionsContainer.appendChild(nearMeDiv);
             }
-            
-            const allOption = document.createElement('div');
-            allOption.textContent = 'Tutte le città';
-            allOption.addEventListener('click', () => {
-                selectedCity = null;
-                // Se abbiamo coordinate originali dall'URL, riattiva la ricerca geografica
-                if (originalCoordsFromUrl) {
-                    selectedCoords = originalCoordsFromUrl;
-                    citySearchInput.value = 'Vicino a me (ricerca geografica)';
-                    syncFieldsFromCityToMap('Vicino a me (ricerca geografica)', originalCoordsFromUrl);
-                } else {
-                    selectedCoords = null;
-                    citySearchInput.value = '';
-                    syncFieldsFromCityToMap('');
-                }
-                citySuggestionsContainer.innerHTML = '';
-            });
-            citySuggestionsContainer.appendChild(allOption);
-
-            // Aggiungi suggerimenti di città
-            citySuggestions.forEach(city => {
-                const div = document.createElement('div');
-                div.textContent = city;
-                div.addEventListener('click', () => {
-                    citySearchInput.value = city;
-                    selectedCity = city;
-                    // Disattiva la ricerca geografica quando si seleziona una città specifica
-                    selectedCoords = null;
-                    syncFieldsFromCityToMap(city, null);
-                    citySuggestionsContainer.innerHTML = '';
-                });
-                citySuggestionsContainer.appendChild(div);
-            });
-            
-            // Aggiungi suggerimenti di indirizzi con coordinate
             addressSuggestions.forEach(address => {
                 const div = document.createElement('div');
                 div.textContent = address.display_address;
@@ -528,29 +398,25 @@
                 div.style.fontSize = '0.9em';
                 div.addEventListener('click', () => {
                     citySearchInput.value = address.display_address;
-                    selectedCity = null;
-                    // Attiva la ricerca geografica con le coordinate dell'indirizzo
+                    selectedCity = address.display_address.split(',')[1]?.trim() || address.display_address; // Estrae la città per il filtro
                     selectedCoords = { lat: address.lat, lon: address.lon };
-                    syncFieldsFromCityToMap(address.display_address, selectedCoords);
                     citySuggestionsContainer.innerHTML = '';
+                    updateRadiusControlState();
                 });
                 citySuggestionsContainer.appendChild(div);
             });
         }
-
-        // INIZIALIZZAZIONE E EVENT LISTENERS
+        // --- FINE MODIFICA CHIAVE ---
 
         try {
-            const [specsResponse, citiesResponse] = await Promise.all([
-                fetch('/api/specializzazioni'), fetch('/api/citta')
-            ]);
+            // --- INIZIO MODIFICA: Rimuoviamo il fetch delle città statiche ---
+            const specsResponse = await fetch('/api/specializzazioni');
             allSpecializations = await specsResponse.json();
-            allCities = await citiesResponse.json();
+            // --- FINE MODIFICA ---
         } catch (error) {
             console.error("Errore caricamento dati iniziali:", error);
         }
 
-        // Gestisci parametri URL dalla homepage (dopo aver caricato i dati)
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('specializzazione_id')) {
             const specId = parseInt(urlParams.get('specializzazione_id'));
@@ -558,161 +424,102 @@
             if (spec) {
                 selectedSpecId = specId;
                 specSearchInput.value = spec.nome;
-                console.log('Specializzazione impostata da URL:', spec.nome);
             }
         }
         if (urlParams.has('citta')) {
-            const city = urlParams.get('citta');
-            selectedCity = city;
-            citySearchInput.value = city;
-            syncFieldsFromCityToMap(city);
-            console.log('Città impostata da URL:', city);
+            selectedCity = urlParams.get('citta');
+            citySearchInput.value = selectedCity;
         }
-        
         if (urlParams.has('date_disponibili')) {
-            const dateFilter = urlParams.get('date_disponibili');
-            selectedDateDisponibili = dateFilter;
-            dateDisponibiliSelect.value = dateFilter;
-            console.log('Filtro date impostato da URL:', dateFilter);
+            selectedDateDisponibili = urlParams.get('date_disponibili');
+            dateDisponibiliSelect.value = selectedDateDisponibili;
         }
         if (urlParams.has('lat') && urlParams.has('lon')) {
             const lat = parseFloat(urlParams.get('lat'));
             const lon = parseFloat(urlParams.get('lon'));
-            console.log('Coordinate impostate da URL:', lat, lon);
-            
-            // Salva le coordinate originali dall'URL
             originalCoordsFromUrl = { lat: lat, lon: lon };
             selectedCoords = { lat: lat, lon: lon };
-            
-            // Aggiorna l'input per mostrare "Vicino a me"
             citySearchInput.value = 'Vicino a me (ricerca geografica)';
-            syncFieldsFromCityToMap('Vicino a me (ricerca geografica)', selectedCoords);
-            selectedCity = null; // Non usiamo il filtro città per la ricerca geografica
-            
-            // La ricerca geografica verrà applicata nel fetchAndRenderMedici modificato
+            selectedCity = null;
         }
 
-        // Event listeners bottoni principali
         filtersBtn.addEventListener('click', openFiltersModal);
         mapBtn.addEventListener('click', openMapModal);
-
-        // Event listeners modal filtri
         closeFiltersModal.addEventListener('click', closeFiltersModalFunc);
         applyFiltersBtn.addEventListener('click', () => {
             closeFiltersModalFunc();
             fetchAndRenderMedici();
         });
         clearFiltersBtn.addEventListener('click', () => {
-            selectedSpecId = null;
-            selectedCity = null;
-            selectedDateDisponibili = '';
-            selectedRadius = 20;
-            selectedSortBy = 'punteggio';
-            specSearchInput.value = '';
-            dateDisponibiliSelect.value = '';
-            raggioRicercaSelect.value = '20';
+            selectedSpecId = null; selectedCity = null; selectedDateDisponibili = '';
+            selectedRadius = 20; selectedSortBy = 'punteggio'; specSearchInput.value = '';
+            dateDisponibiliSelect.value = ''; raggioRicercaSelect.value = '20';
             sortSelect.value = 'punteggio';
-            
-            // Preserva le coordinate originali dall'URL, altrimenti le cancella
             if (originalCoordsFromUrl) {
                 selectedCoords = originalCoordsFromUrl;
                 citySearchInput.value = 'Vicino a me (ricerca geografica)';
-                syncFieldsFromCityToMap('Vicino a me (ricerca geografica)', originalCoordsFromUrl);
                 selectedCity = null;
             } else {
                 selectedCoords = null;
                 citySearchInput.value = '';
-                syncFieldsFromCityToMap('');
             }
-            
             closeFiltersModalFunc();
             fetchAndRenderMedici();
+            updateRadiusControlState();
         });
 
-        // Event listeners modal mappa
         closeMapModal.addEventListener('click', closeMapModalFunc);
-
-        // Event listeners filtri
-        dateDisponibiliSelect.addEventListener('change', () => {
-            selectedDateDisponibili = dateDisponibiliSelect.value;
-        });
+        sortSelect.addEventListener('change', () => { selectedSortBy = sortSelect.value; });
+        dateDisponibiliSelect.addEventListener('change', () => { selectedDateDisponibili = dateDisponibiliSelect.value; });
 
         specSearchInput.addEventListener('input', () => {
             const query = specSearchInput.value.toLowerCase();
             clearTimeout(debounceTimer);
-            if (query.length === 0) {
-                selectedSpecId = null;
-                return;
-            }
+            if (query.length === 0) { selectedSpecId = null; return; }
             debounceTimer = setTimeout(() => {
-                const filtered = allSpecializations.filter(spec => 
-                    spec.nome.toLowerCase().includes(query));
+                const filtered = allSpecializations.filter(spec => spec.nome.toLowerCase().includes(query));
                 showSpecSuggestions(filtered);
             }, 300);
         });
-
-        // Event listeners per il campo città con autocomplete indirizzi
+        
         citySearchInput.addEventListener('focus', () => {
-            // Mostra immediatamente la tendina
-            showCitySuggestions(allCities, [], !!userLocation);
-            
-            // Se non abbiamo già la posizione, prova a ottenerla in background
+            // --- MODIFICA: Mostra solo l'opzione "vicino a me" al focus ---
+            showCitySuggestions([], !!userLocation);
             if (!userLocation && navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         userLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
-                        // Aggiorna la tendina con "Vicino a me" se è ancora aperta
                         if (document.activeElement === citySearchInput) {
-                            showCitySuggestions(allCities, [], true);
+                            showCitySuggestions([], true);
                         }
-                    },
-                    () => {
-                        // La geolocalizzazione è fallita, mantieni la tendina come è
-                    }
+                    }, () => {}
                 );
             }
         });
         
-        citySearchInput.addEventListener('click', () => {
-            // Mostra la tendina anche al click (oltre che al focus)
-            showCitySuggestions(allCities, [], !!userLocation);
-        });
+        citySearchInput.addEventListener('click', () => { showCitySuggestions([], !!userLocation); });
         
+        // --- INIZIO MODIFICA CHIAVE ---
         citySearchInput.addEventListener('input', () => {
             const query = citySearchInput.value.toLowerCase();
-            
-            // Sincronizza con il campo mappa solo se non stiamo già aggiornando
-            if (!isUpdatingFields) {
-                syncFieldsFromCityToMap(citySearchInput.value);
-            }
-            
             clearTimeout(debounceTimer);
-            if (query.length === 0) {
-                selectedCity = null;
-                showCitySuggestions(allCities, [], !!userLocation);
+            updateRadiusControlState();
+            if (query.length < 3) { // Non cercare se la query è troppo corta
+                citySuggestionsContainer.innerHTML = '';
+                if(query.length === 0) selectedCity = null; // Pulisci la città se il campo è vuoto
                 return;
             }
             debounceTimer = setTimeout(async () => {
-                // Filtra le città
-                const filteredCities = allCities.filter(city => city.toLowerCase().includes(query));
-                
-                // Se il testo è abbastanza lungo, cerca anche indirizzi
-                let addressSuggestions = [];
-                if (query.length >= 3) {
-                    try {
-                        const response = await fetch(`/api/autocomplete-address?query=${encodeURIComponent(query)}`);
-                        const addresses = await response.json();
-                        addressSuggestions = addresses; // Mantieni oggetti completi con lat/lon
-                    } catch (error) {
-                        console.error('Errore autocomplete indirizzi:', error);
-                    }
+                try {
+                    const addressSuggestions = await callApi(`/api/autocomplete-address?query=${encodeURIComponent(query)}`);
+                    showCitySuggestions(addressSuggestions, true);
+                } catch (error) { 
+                    console.error('Errore autocomplete indirizzi:', error); 
                 }
-                
-                showCitySuggestions(filteredCities, addressSuggestions, !!userLocation);
             }, 300);
         });
+        // --- FINE MODIFICA CHIAVE ---
 
-        // Chiudi suggerimenti cliccando fuori
         document.addEventListener('click', (e) => {
             if (e.target !== specSearchInput && e.target !== citySearchInput) {
                 specSuggestionsContainer.innerHTML = '';
@@ -720,16 +527,13 @@
             }
         });
 
-        // Chiudi modal cliccando fuori
         window.addEventListener('click', (e) => {
             if (e.target === filtersModal) closeFiltersModalFunc();
             if (e.target === mapModal) closeMapModalFunc();
         });
 
-        // Event listeners rimossi - la mappa ora usa solo i filtri principali
-
-        // Caricamento iniziale
         fetchAndRenderMedici();
+        updateRadiusControlState();
     });
 </script>
 {% endblock %}
