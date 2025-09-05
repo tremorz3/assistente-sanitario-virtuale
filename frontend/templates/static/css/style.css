@@ -194,6 +194,13 @@ a:hover {
     box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
 }
 
+.form-group select:disabled {
+    background-color: #2a2a2a; 
+    color: var(--text-secondary);
+    opacity: 0.6; 
+    cursor: not-allowed;
+}
+
 .btn-form {
     width: 100%;
     padding: 12px;
@@ -580,6 +587,16 @@ a:hover {
     max-width: 500px;
     border-radius: 8px;
     position: relative;
+}
+
+.modal.is-centered {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.is-centered .modal-content {
+    margin: 20px; /* Rimuove il margine superiore e garantisce spazio sui lati */
 }
 
 .close-button {
