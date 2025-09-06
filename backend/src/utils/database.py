@@ -1,9 +1,7 @@
 '''
 Lo scopo di questo file è centralizzare tutta la logica per la connessione al database e le operazioni di base sui dati.
 '''
-from typing import List, Dict, Tuple, Optional, Any
 import mariadb
-import sys
 import os                
 from dotenv import load_dotenv # Funzione specifica per caricare il file .env
 

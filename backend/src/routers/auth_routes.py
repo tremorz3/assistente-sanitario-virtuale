@@ -1,12 +1,15 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 
 # Import dei modelli e delle utility necessari
-from utils.database import get_db_connection, close_db_resources
 from utils.models import PazienteRegisration, MedicoRegistration, UserLogin, UserOut, Token
 from utils.auth import pwd_context, create_access_token, get_current_user
 from utils.geocoding import get_coordinates
-
-import mariadb
+from utils.database_manager import (
+    db_transaction, 
+    db_readonly,
+    execute_insert_get_id,
+    validate_specialization_exists
+)
 
 router = APIRouter(
     tags=["Autenticazione e Registrazione"]  # Unico tag per raggruppare questi endpoint
@@ -23,45 +26,18 @@ async def register_paziente(paziente: PazienteRegisration) -> UserOut:
     Raises:
         HTTPException: Se si verifica un errore durante la registrazione.
     '''
-    conn = None
-    cursor = None
+    hashed_password: str = pwd_context.hash(paziente.password)
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        hashed_password: str = pwd_context.hash(paziente.password)
-
+    with db_transaction(dictionary=False) as (conn, cursor):
         # Query per l'inserimento di un nuovo utente 
-        query_utente: str = "INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'paziente')"
-        cursor.execute(query_utente, (paziente.email, hashed_password))
-        
-        nuovo_utente_id: int = cursor.lastrowid # Recupera l'ID dell'ultimo utente inserito
+        query_utente = "INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'paziente')"
+        nuovo_utente_id = execute_insert_get_id(cursor, query_utente, (paziente.email, hashed_password))
 
         # Query per l'inserimento del paziente
-        query_paziente: str = "INSERT INTO Pazienti (utente_id, nome, cognome, telefono) VALUES (?, ?, ?, ?)"
-        cursor.execute(query_paziente, (nuovo_utente_id, paziente.nome, paziente.cognome, paziente.telefono))
+        query_paziente = "INSERT INTO Pazienti (utente_id, nome, cognome, telefono) VALUES (?, ?, ?, ?)"
+        execute_insert_get_id(cursor, query_paziente, (nuovo_utente_id, paziente.nome, paziente.cognome, paziente.telefono))
 
-        conn.commit() # Salva le modifiche nel database
         return UserOut(id=nuovo_utente_id, email=paziente.email, tipo_utente="paziente", nome=paziente.nome)
-    except mariadb.IntegrityError:
-        # Errore specifico per violazione di un vincolo (es. email UNIQUE)
-        if conn:
-            conn.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Un utente con l'email '{paziente.email}' esiste già."
-        )
-    except mariadb.Error as e:
-        # Qualsiasi altro errore del database
-        if conn:
-            conn.rollback()
-        # Non si espone direttamente l'errore 'e' all'utente per sicurezza
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Si è verificato un errore interno durante la registrazione."
-        )
-    finally:
-        close_db_resources(conn, cursor)
 
 @router.post("/register/medico", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register_medico(medico: MedicoRegistration) -> UserOut:
@@ -88,32 +64,17 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
             )
 
 
-    conn = None
-    cursor = None
-
-    try:
-        conn = get_db_connection()
-        # dictionary=True fa sì che le query SELECT restituiscano i risultati come dizionari, invece di tuple
-        cursor = conn.cursor(dictionary=True) 
-
+    with db_transaction() as (conn, cursor):
         # Verifica dell'esistenza della specializzazione
-        cursor.execute("SELECT id FROM Specializzazioni WHERE id = ?", (medico.specializzazione_id,))
-        if cursor.fetchone() is None:
-            # Se la query non trova l'ID, la specializzazione non è valida
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"La specializzazione con ID {medico.specializzazione_id} non esiste."
-            )
-        
+        validate_specialization_exists(cursor, medico.specializzazione_id)
+
         hashed_password: str = pwd_context.hash(medico.password)
 
-        # Query per l'inserimento di un nuovo utente
+        # Inserimento utente
         query_utente = "INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'medico')"
-        cursor.execute(query_utente, (medico.email, hashed_password))
+        nuovo_utente_id = execute_insert_get_id(cursor, query_utente, (medico.email, hashed_password))
 
-        nuovo_utente_id: int = cursor.lastrowid  # Recupera l'ID dell'ultimo utente inserito
-
-        # Query per l'inserimento del medico
+        # Inserimento medico
         query_medico = """
             INSERT INTO Medici (
                 utente_id, specializzazione_id, nome, cognome, citta, telefono, 
@@ -121,30 +82,14 @@ async def register_medico(medico: MedicoRegistration) -> UserOut:
                 indirizzo_studio, latitudine, longitudine
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        cursor.execute(query_medico, (
+        execute_insert_get_id(cursor, query_medico, (
             nuovo_utente_id, medico.specializzazione_id, medico.nome, medico.cognome, medico.citta,
             medico.telefono, medico.ordine_iscrizione, medico.numero_iscrizione, medico.provincia_iscrizione,
             medico.indirizzo_studio, lat, lon
         ))
 
-        conn.commit()
+        # Commit automatico da db_transaction
         return UserOut(id=nuovo_utente_id, email=medico.email, tipo_utente="medico", nome=medico.nome)
-    except mariadb.IntegrityError:
-        if conn:
-            conn.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Un utente con l'email '{medico.email}' esiste già."
-        )
-    except mariadb.Error as e:
-        if conn:
-            conn.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Si è verificato un errore interno durante la registrazione."
-        )
-    finally:
-        close_db_resources(conn, cursor)
 
 @router.post("/login", response_model=UserOut)
 async def login(user: UserLogin) ->  UserOut:
@@ -157,13 +102,7 @@ async def login(user: UserLogin) ->  UserOut:
     Raises:
         HTTPException: Se le credenziali non sono valide o si verifica un errore durante il login.  
     '''
-    conn = None
-    cursor = None
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-
+    with db_readonly() as cursor:
         # Query per recuperare l'utente nel database
         query = """
             SELECT
@@ -181,14 +120,13 @@ async def login(user: UserLogin) ->  UserOut:
         if not utente or not pwd_context.verify(user.password, utente['password_hash']):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Email o password non validi.",            
+                detail="Email o password non validi.",
             )
-        
+
         # Se le credenziali sono corrette, crea il token di accesso
         access_token: str = create_access_token(data={"sub": utente['email'], "id": utente['id'], "tipo_utente": utente['tipo_utente']})
         token: Token = Token(access_token=access_token, token_type="bearer")
 
-        # Bearer Token è uno standard per l'autenticazione, che specifica che il portatore (bearer) del token ha accesso alle risorse protette
         return UserOut(
             id=utente['id'], 
             email=utente['email'], 
@@ -196,13 +134,6 @@ async def login(user: UserLogin) ->  UserOut:
             nome=utente['nome'], 
             token=token
         )
-    except mariadb.Error as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Si è verificato un errore interno durante il login."
-        )
-    finally:
-        close_db_resources(conn, cursor)
 
 # Nuovo endpoint "/me" per recuperare il profilo dell'utente loggato.
 # Il prefisso del router non c'è, quindi l'URL sarà semplicemente "/me".

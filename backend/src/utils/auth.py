@@ -13,10 +13,9 @@ from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi import Header
-import mariadb
 
 from utils.models import TokenData, UserOut
-from utils.database import get_db_connection, close_db_resources
+from utils.database_manager import db_readonly, get_user_profile_data
 
 
 # Configurazione sicurezza e costanti
@@ -128,39 +127,12 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(http_be
     # Il token vero e proprio si trova nell'attributo .credentials
     token = credentials.credentials
     token_data: TokenData = verify_token(token)
-    
-    conn = None
-    cursor = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        
-        # Usiamo LEFT JOIN e COALESCE (restituisce il primo valore non nullo che trova) per recuperare il nome, che sia un
-        # paziente o un medico, in una sola query.
-        query = """
-            SELECT
-                u.id, u.email, u.tipo_utente,
-                COALESCE(p.nome, m.nome) AS nome,
-                p.id AS paziente_id,
-                m.id AS medico_id
-            FROM Utenti u
-            LEFT JOIN Pazienti p ON u.id = p.utente_id
-            LEFT JOIN Medici m ON u.id = m.utente_id
-            WHERE u.id = ?
-        """
-        cursor.execute(query, (token_data.id,))
-        user_data = cursor.fetchone()
-        
-        if user_data is None or user_data.get('nome') is None:
-            # Se l'utente non esiste o non ha un profilo associato, l'autenticazione fallisce.
-            raise HTTPException(status_code=404, detail="User not found or profile incomplete")
-            
-        return UserOut(**user_data)
-        
-    except mariadb.Error:
-        raise HTTPException(status_code=500, detail="Database error during user retrieval")
-    finally:
-        close_db_resources(conn, cursor)
+
+    # Carica l'utente tramite helper centralizzato
+    user = _load_user_out(token_data.id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found or profile incomplete")
+    return user
 
 # Dipendenza opzionale per autenticazione
 def get_optional_current_user(authorization: Optional[str] = Header(None)) -> Optional[UserOut]:
@@ -182,37 +154,19 @@ def get_optional_current_user(authorization: Optional[str] = Header(None)) -> Op
     try:
         token = authorization.split(' ')[1]
         token_data: TokenData = verify_token(token)
-        
-        conn = None
-        cursor = None
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
-            
-            query = """
-                SELECT
-                    u.id, u.email, u.tipo_utente,
-                    COALESCE(p.nome, m.nome) AS nome,
-                    p.id AS paziente_id,
-                    m.id AS medico_id
-                FROM Utenti u
-                LEFT JOIN Pazienti p ON u.id = p.utente_id
-                LEFT JOIN Medici m ON u.id = m.utente_id
-                WHERE u.id = ?
-            """
-            cursor.execute(query, (token_data.id,))
-            user_data = cursor.fetchone()
-            
-            if user_data is None or user_data.get('nome') is None:
-                return None
-                
-            return UserOut(**user_data)
-            
-        except mariadb.Error:
-            return None
-        finally:
-            close_db_resources(conn, cursor)
-            
+
+        return _load_user_out(token_data.id)
     except (HTTPException, JWTError):
         return None
 
+# Helper centralizzato per caricare UserOut
+def _load_user_out(user_id: int) -> Optional[UserOut]:
+    """
+    Recupera i dati del profilo utente e li converte in UserOut.
+    Restituisce None se profilo non trovato o privo di nome.
+    """
+    with db_readonly() as cursor:
+        data = get_user_profile_data(cursor, user_id)
+        if not data or data.get('nome') is None:
+            return None
+        return UserOut(**data)

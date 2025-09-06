@@ -1,38 +1,21 @@
 {% extends "layouts/base.html" %}
+{% from "partials/_form_macros.html" import form_container, show_success, form_field, password_field, submit_button, form_switch_link %}
 
 {% block title %}Login - MediClick{% endblock %}
 
 {% block content %}
-<div class="form-container">
-    <form class="form-box" id="login-form">
-        <h2>Accedi al Tuo Account</h2>
+{% call form_container(form_class="form-box", action="", method="post", id="login-form") %}
+    <h2>Accedi al Tuo Account</h2>
+    
+    {{ show_success(success_message) }}
+    <div id="error-message" class="form-error hidden"></div>
 
-        {% if success_message %}
-            <div class="form-success">{{ success_message }}</div>
-        {% endif %}
-        
-        <div id="error-message" class="form-error hidden"></div>
-
-        <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" placeholder="iltuoindirizzo@email.com" required>
-        </div>
-        
-        <div class="form-group">
-            <label for="password">Password</label>
-            <div class="password-container">
-                <input type="password" id="password" name="password" placeholder="••••••••" required>
-                <span class="password-toggle-icon"></span>
-            </div>
-        </div>
-
-        <button type="submit" class="btn-form">Accedi</button>
-        
-        <p class="form-switch">
-            Non hai un account? <a href="/pagina-registrazione-paziente">Registrati</a>
-        </p>
-    </form>
-</div>
+    {{ form_field("Email", "email", type="email", placeholder="iltuoindirizzo@email.com", required=True) }}
+    {{ password_field("Password", "password", placeholder="••••••••") }}
+    
+    {{ submit_button("Accedi") }}
+    {{ form_switch_link("Non hai un account?", "/pagina-registrazione-paziente", "Registrati") }}
+{% endcall %}
 {% endblock %}
 
 {% block scripts %}

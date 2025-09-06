@@ -18,7 +18,6 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.graph.message import add_messages
 from typing import TypedDict, Annotated
-from langchain_core.messages import AIMessage
 from langchain_ollama.chat_models import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages.utils import trim_messages, count_tokens_approximately

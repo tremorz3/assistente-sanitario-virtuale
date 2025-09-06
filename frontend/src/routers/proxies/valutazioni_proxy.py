@@ -5,8 +5,7 @@ visualizzazione delle valutazioni.
 from fastapi import APIRouter, Body, Header
 from typing import Optional
 
-from utils.models import APIParams
-from utils.api_client import call_api
+from utils.api_utils import authenticated_call
 
 router = APIRouter(
     prefix="/api/valutazioni",
@@ -18,24 +17,18 @@ async def proxy_get_my_valutazioni(authorization: Optional[str] = Header(None)):
     """
     Proxy per ottenere le valutazioni del paziente autenticato.
     """
-    token = authorization.split(" ")[1] if authorization else None
-    api_params = APIParams(method="GET", endpoint="/valutazioni/me")
-    return call_api(params=api_params, token=token)
+    return authenticated_call("GET", "/valutazioni/me", authorization)
 
 @router.post("")
 async def proxy_crea_valutazione(payload: dict = Body(...), authorization: Optional[str] = Header(None)):
     """
     Proxy per creare una nuova valutazione.
     """
-    token = authorization.split(" ")[1] if authorization else None
-    api_params = APIParams(method="POST", endpoint="/valutazioni", payload=payload)
-    return call_api(params=api_params, token=token)
+    return authenticated_call("POST", "/valutazioni", authorization, payload)
 
 @router.get("/medico/me")
 async def proxy_get_my_valutazioni_medico(authorization: Optional[str] = Header(None)):
     """
     Proxy per ottenere le valutazioni che ha ricevuto il medico autenticato.
     """
-    token = authorization.split(" ")[1] if authorization else None
-    api_params = APIParams(method="GET", endpoint="/valutazioni/medico/me")
-    return call_api(params=api_params, token=token)
+    return authenticated_call("GET", "/valutazioni/medico/me", authorization)

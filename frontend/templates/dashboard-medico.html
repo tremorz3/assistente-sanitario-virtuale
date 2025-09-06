@@ -71,11 +71,11 @@
                 actionsHtml += '</div>';
 
                 card.innerHTML = `
-                    <h3>Paziente: ${p.paziente_nome} ${p.paziente_cognome}</h3>
-                    <p><strong>Telefono:</strong> <a href="tel:${p.paziente_telefono}">${p.paziente_telefono}</a></p>
+                    <h3>Paziente: ${escapeHtml(p.paziente_nome)} ${escapeHtml(p.paziente_cognome)}</h3>
+                    <p><strong>Telefono:</strong> <a href="tel:${sanitizePhone(p.paziente_telefono)}">${escapeHtml(p.paziente_telefono)}</a></p>
                     <p><strong>Data:</strong> ${dataVisita.toLocaleDateString('it-IT', {day: '2-digit', month: 'long', year: 'numeric'})} - ${dataVisita.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</p>
-                    <p><strong>Stato:</strong> ${p.stato}</p>
-                    <p><strong>Note Paziente:</strong> <em>${p.note_paziente || 'Nessuna nota'}</em></p>
+                    <p><strong>Stato:</strong> ${escapeHtml(p.stato)}</p>
+                    <p><strong>Note Paziente:</strong> <em>${escapeHtml(p.note_paziente || 'Nessuna nota')}</em></p>
                     ${actionsHtml}
                 `;
                 
@@ -96,44 +96,6 @@
         }
     });
 
-    async function handleCompleteClick(prenotazioneId) {
-        const userConfirmed = await SalusNotifier.confirm(
-            "Vuoi davvero segnare questa visita come completata?",
-            "Conferma Azione"
-        );
-        if (userConfirmed) {
-            try {
-                await callApi(`/api/prenotazioni/${prenotazioneId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ stato: 'Completata' })
-                });
-                SalusNotifier.alert('Visita segnata come completata!', 'Successo');
-                setTimeout(() => window.location.reload(), 1500);
-            } catch (error) {
-                SalusNotifier.alert(`Errore: ${error.message}`, 'Errore');
-            }
-        }
-    }
-    
-    async function handleCancelClick(prenotazioneId) {
-        const userConfirmed = await SalusNotifier.confirm(
-            "Sei sicuro di voler cancellare questa prenotazione? L'azione è irreversibile.",
-            "Conferma Cancellazione"
-        );
-        if (userConfirmed) {
-            try {
-                await callApi(`/api/prenotazioni/${prenotazioneId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ stato: 'Cancellata' })
-                });
-                SalusNotifier.alert('Prenotazione cancellata con successo!', 'Successo');
-                setTimeout(() => window.location.reload(), 1500);
-            } catch (error) {
-                SalusNotifier.alert(`Errore durante la cancellazione: ${error.message}`, 'Errore');
-            }
-        }
-    }
+    // Funzioni globali spostate in static/js/main.js: handleCompleteClick, handleCancelClick
 </script>
 {% endblock %}

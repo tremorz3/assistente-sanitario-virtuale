@@ -228,9 +228,11 @@ function updateNavbar() {
     // Link di logout: visibile solo se l'utente È loggato
     navItems.logout?.classList.toggle('hidden', !isLoggedIn);
 
-    // Link "I Nostri Medici": visibile per tutti tranne che per i medici.
+    // Link "I Nostri Medici": nascosto nella homepage, visibile altrove (tranne per i medici)
+    const isHomepage = window.location.pathname === '/';
     const isMedico = userType === 'medico';
-    navItems.cercaMedici?.classList.toggle('hidden', isMedico);
+    const shouldHideCercaMedici = isHomepage || isMedico;
+    navItems.cercaMedici?.classList.toggle('hidden', shouldHideCercaMedici);
 
     // Link specifici per il PAZIENTE
     navItems.profiloPaziente?.classList.toggle('hidden', userType !== 'paziente');
@@ -405,7 +407,6 @@ function initAddressAutocomplete(inputId, suggestionsContainerId, onSuggestionSe
 
     // Mostra "Vicino a me" al focus se disponibile
     input.addEventListener('focus', function() {
-        console.log('Focus event triggered!', {customRenderer: !!customRenderer, userLocation: window.userLocation});
         if (customRenderer && window.userLocation) {
             // Mostra solo "Vicino a me" quando il campo viene cliccato/focussato
             showAddressSuggestions([], suggestionsContainer, input, onSuggestionSelect, customRenderer);
