@@ -4,7 +4,7 @@ Modelli Pydantic per la gestione dei dati nel frontend.
 Definisc e i modelli di trasformazione tra il formato del browser e il backend API.
 """
 
-from typing import Optional, Dict, Any, List, Literal
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
 
 class APIParams(BaseModel):

@@ -71,50 +71,6 @@
 {% endblock %}
 
 {% block scripts %}
-<style>
-@keyframes typing {
-    0%, 60%, 100% {
-        transform: translateY(0);
-        opacity: 0.4;
-    }
-    30% {
-        transform: translateY(-10px);
-        opacity: 1;
-    }
-}
-.typing-dots {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-/* Styling for the specialist booking button */
-.specialist-booking-container {
-    margin-top: 15px !important;
-    text-align: center !important;
-}
-
-.specialist-booking-btn {
-    background-color: #28a745 !important; /* Success green */
-    border: none !important;
-    color: white !important;
-    padding: 10px 20px !important;
-    border-radius: 20px !important;
-    cursor: pointer !important;
-    transition: background-color 0.3s ease !important;
-    font-family: 'Poppins', sans-serif !important;
-    font-size: 1rem !important;
-    font-weight: normal !important;
-    max-width: 200px !important;
-    width: auto !important;
-    margin: 0 auto !important;
-    display: block !important;
-}
-
-.specialist-booking-btn:hover {
-    background-color: #218838 !important; /* Darker green on hover */
-}
-</style>
 <script>
     // TypingIndicator è definito in main.js - usa quello globale
 
@@ -125,6 +81,7 @@
     const authRequiredMessage = document.getElementById('auth-required-message');
     const resetChatBtn = document.getElementById('reset-chat-btn');
     let userLocation = null;
+    window.userLocation = null; // Rendi accessibile globalmente
     let isUserAuthenticated = false;
     let sessionId = localStorage.getItem('chat_session_id'); // Recupera da localStorage
 
@@ -180,32 +137,18 @@
         event.preventDefault();
         const userMessage = chatInput.value.trim();
         if (!userMessage) return;
-        appendMessage(userMessage, 'user');
+        ChatUI.appendMessage(chatWindow, userMessage, 'user', allSpecializations, userLocation, chatInput, resetChatBtn);
         chatInput.value = '';
         chatInput.disabled = true;
         TypingIndicator.show();
         try {
-            const token = localStorage.getItem('user_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const response = await fetch('/chat/message', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ 
-                    session_id: sessionId,
-                    messages: [{ role: 'user', content: userMessage }]
-                })
-            });
-            if (!response.ok) throw new Error(`Errore dal server: ${response.statusText}`);
-            const aiData = await response.json();
+            const aiData = await ChatAPI.sendMessage(sessionId, userMessage);
             if (aiData.content) {
-                appendMessage(aiData.content, 'assistant');
+                ChatUI.appendMessage(chatWindow, aiData.content, 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
             }
         } catch (error) {
             console.error('Chat error:', error);
-            appendMessage('Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant');
+            ChatUI.appendMessage(chatWindow, 'Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
         } finally {
             setTimeout(() => {
                 TypingIndicator.hide();
@@ -215,42 +158,18 @@
         }
     });
 
-    function appendMessage(text, role) {
-        const messageContainer = document.createElement('div');
-        messageContainer.className = `chat-message ${role}-message`;
-        const messageParagraph = document.createElement('p');
-        messageParagraph.textContent = text;
-        messageContainer.appendChild(messageParagraph);
-        chatWindow.appendChild(messageContainer);
-        if (role === 'assistant' && detectSpecialistRecommendation(text)) {
-            const specialistInfo = extractSpecialistInfo(text);
-            if (specialistInfo) {
-                const bookingButton = createBookingButton(specialistInfo);
-                chatWindow.appendChild(bookingButton);
-                disableChatInput();
-            }
-        }
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
+    // appendMessage centralizzato: usa ChatUI.appendMessage(...)
 
     resetChatBtn.addEventListener('click', async () => {
         chatWindow.innerHTML = '';
         const welcomeMessageHTML = `<div class="chat-message assistant-message"><p>Ciao! Sono MediClick AI e sono qui per aiutarti.</p></div>`;
         chatWindow.innerHTML = welcomeMessageHTML;
         showQuickActionButtons();
-        enableChatInput();
+        const submitBtn = document.getElementById('chat-submit-btn');
+        ChatHelpers.enableChatInput(chatInput, submitBtn);
         try {
-            const token = localStorage.getItem('user_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-            const response = await fetch('/chat/reset', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ session_id: sessionId, messages: [] })
-            });
-            if (response.ok) {
+            const resetSuccess = await ChatAPI.resetSession(sessionId);
+            if (resetSuccess) {
                 sessionId = generateSessionId();
             }
         } catch (error) {
@@ -270,142 +189,59 @@
         }
     }
 
-    function showSpecBookingSuggestions(suggestions) {
-        specBookingSuggestions.innerHTML = '';
-        const limitedSuggestions = suggestions.slice(0, 8);
-        limitedSuggestions.forEach(spec => {
-            const div = document.createElement('div');
-            div.textContent = spec.nome;
-            div.addEventListener('click', () => {
-                specBookingSearch.value = spec.nome;
-                selectedSpecId = spec.id;
-                specBookingSuggestions.innerHTML = '';
-            });
-            specBookingSuggestions.appendChild(div);
-        });
-        if (suggestions.length > 8) {
-            const showAllDiv = document.createElement('div');
-            showAllDiv.textContent = `Visualizza tutte (${suggestions.length})`;
-            showAllDiv.className = 'show-all-option';
-            showAllDiv.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                specBookingSuggestions.innerHTML = '';
-                specBookingSuggestions.classList.add('show-all-active');
-                suggestions.forEach(spec => {
-                    const div = document.createElement('div');
-                    div.textContent = spec.nome;
-                    div.addEventListener('click', () => {
-                        specBookingSearch.value = spec.nome;
-                        selectedSpecId = spec.id;
-                        specBookingSuggestions.innerHTML = '';
-                        specBookingSuggestions.classList.remove('show-all-active');
-                    });
-                    specBookingSuggestions.appendChild(div);
+    // Autocomplete Specializzazione centralizzato
+    initSimpleAutocomplete(
+        'spec-booking-search',
+        'spec-booking-suggestions',
+        () => allSpecializations,
+        (spec) => { selectedSpecId = spec.id; },
+        (spec) => spec.nome,
+        0,
+        300
+    );
+
+    // Autocomplete Indirizzo centralizzato con renderer personalizzato (aggiunge "Vicino a me")
+    initAddressAutocomplete(
+        'location-booking-search',
+        'location-booking-suggestions',
+        (addr) => {
+            selectedLocation = addr.display_address;
+            selectedLocationCoords = { lat: addr.lat, lon: addr.lon };
+        },
+        3,
+        300,
+        (suggestions, container, input, onSelect) => {
+            container.innerHTML = '';
+            // near me option se disponibile - sempre in cima ai suggerimenti
+            if (userLocation || window.userLocation) {
+                const currentLocation = userLocation || window.userLocation;
+                const nearMeDiv = document.createElement('div');
+                nearMeDiv.textContent = '📍 Vicino a me';
+                nearMeDiv.className = 'near-me-option';
+                nearMeDiv.addEventListener('click', () => {
+                    input.value = 'Vicino a me';
+                    selectedLocation = 'near_me';
+                    selectedLocationCoords = currentLocation;
+                    container.innerHTML = '';
                 });
-            });
-            specBookingSuggestions.appendChild(showAllDiv);
-        }
-    }
-
-    // --- INIZIO MODIFICA CHIAVE ---
-    function showLocationBookingSuggestions(addressSuggestions = [], showNearMe = false) {
-        locationBookingSuggestions.innerHTML = '';
-        
-        if (showNearMe && userLocation) {
-            const nearMeDiv = document.createElement('div');
-            nearMeDiv.textContent = '📍 Vicino a me';
-            nearMeDiv.className = 'near-me-option';
-            nearMeDiv.addEventListener('click', () => {
-                locationBookingSearch.value = 'Vicino a me';
-                selectedLocation = 'near_me';
-                selectedLocationCoords = userLocation;
-                locationBookingSuggestions.innerHTML = '';
-            });
-            locationBookingSuggestions.appendChild(nearMeDiv);
-        }
-
-        // Rimuoviamo il ciclo che mostrava i suggerimenti statici.
-        // Mostriamo solo i suggerimenti dinamici degli indirizzi.
-        addressSuggestions.forEach(address => {
-            const div = document.createElement('div');
-            div.textContent = address.display_address;
-            div.addEventListener('click', () => {
-                locationBookingSearch.value = address.display_address;
-                selectedLocation = address.display_address; // Salviamo l'indirizzo completo
-                selectedLocationCoords = { lat: address.lat, lon: address.lon }; // E le coordinate
-                locationBookingSuggestions.innerHTML = '';
-            });
-            locationBookingSuggestions.appendChild(div);
-        });
-    }
-    // --- FINE MODIFICA CHIAVE ---
-
-    specBookingSearch.addEventListener('focus', () => {
-        if (allSpecializations.length > 0) {
-            showSpecBookingSuggestions(allSpecializations);
-        }
-    });
-
-    specBookingSearch.addEventListener('input', () => {
-        const query = specBookingSearch.value.toLowerCase();
-        clearTimeout(debounceTimer);
-        if (query.length === 0) {
-            selectedSpecId = null;
-            showSpecBookingSuggestions(allSpecializations);
-            return;
-        }
-        debounceTimer = setTimeout(() => {
-            const filtered = allSpecializations.filter(spec => spec.nome.toLowerCase().includes(query));
-            showSpecBookingSuggestions(filtered);
-        }, 300);
-    });
-
-    locationBookingSearch.addEventListener('focus', () => {
-        showLocationBookingSuggestions([], !!userLocation);
-        if (!userLocation && navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    userLocation = { lat: position.coords.latitude, lon: position.coords.longitude };
-                    if (document.activeElement === locationBookingSearch) {
-                        showLocationBookingSuggestions([], true);
-                    }
-                }, () => {}
-            );
-        }
-    });
-
-    locationBookingSearch.addEventListener('click', () => {
-        showLocationBookingSuggestions([], !!userLocation);
-    });
-    
-    // --- INIZIO MODIFICA CHIAVE ---
-    locationBookingSearch.addEventListener('input', () => {
-        const query = locationBookingSearch.value.toLowerCase();
-        clearTimeout(debounceTimer);
-        
-        if (query.length < 3) { // Non cercare se la query è troppo corta
-            locationBookingSuggestions.innerHTML = '';
-            // Pulisci i filtri di localizzazione se il campo è vuoto
-            if (query.length === 0) {
-                 selectedLocation = null;
-                 selectedLocationCoords = null;
+                container.appendChild(nearMeDiv);
             }
-            return;
+            // suggerimenti indirizzi
+            suggestions.forEach(s => {
+                const div = document.createElement('div');
+                div.textContent = s.display_address;
+                div.addEventListener('click', () => {
+                    input.value = s.display_address;
+                    // Quando l'utente seleziona un indirizzo specifico, cancella la selezione "near_me"
+                    selectedLocation = s.display_address;
+                    selectedLocationCoords = { lat: s.lat, lon: s.lon };
+                    if (onSelect) onSelect(s);
+                    container.innerHTML = '';
+                });
+                container.appendChild(div);
+            });
         }
-        
-        debounceTimer = setTimeout(async () => {
-            try {
-                // Chiama direttamente l'API per l'autocomplete degli indirizzi
-                const response = await fetch(`/api/autocomplete-address?query=${encodeURIComponent(query)}`);
-                const addresses = await response.json();
-                showLocationBookingSuggestions(addresses, true);
-            } catch (error) {
-                console.error('Errore autocomplete indirizzi:', error);
-            }
-        }, 300);
-    });
-    // --- FINE MODIFICA CHIAVE ---
+    );
 
     searchBookingBtn.addEventListener('click', () => {
         const params = new URLSearchParams();
@@ -438,10 +274,24 @@
         window.location.href = `/medici?${params.toString()}`;
     });
 
-    document.addEventListener('click', (e) => {
-        if (e.target !== specBookingSearch && e.target !== locationBookingSearch) {
-            specBookingSuggestions.innerHTML = '';
-            locationBookingSuggestions.innerHTML = '';
+    // Reset selezione quando l'utente inizia a digitare
+    locationBookingSearch.addEventListener('input', () => {
+        const inputValue = locationBookingSearch.value.trim();
+        // Se l'utente sta cancellando il contenuto o digitando qualcosa di nuovo, reset della selezione
+        if (inputValue === '' || (inputValue !== 'Vicino a me' && inputValue !== selectedLocation)) {
+            selectedLocation = null;
+            selectedLocationCoords = null;
+        }
+    });
+
+    // Geolocalizzazione lazy alla prima focus del campo posizione  
+    locationBookingSearch.addEventListener('focus', () => {
+        if (!userLocation && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                window.userLocation = userLocation; // Aggiorna anche la variabile globale
+                // Non selezionare automaticamente, solo rendere disponibile per i suggerimenti
+            }, () => {});
         }
     });
 
@@ -461,141 +311,45 @@
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
     
-    chatWindow.addEventListener('click', function(e) {
+    chatWindow.addEventListener('click', async function(e) {
         if (e.target.classList.contains('quick-action-btn')) {
             const message = e.target.getAttribute('data-message');
             const quickActionsContainer = chatWindow.querySelector('.quick-actions-container');
             if (quickActionsContainer) quickActionsContainer.remove();
             const existingBookingButtons = chatWindow.querySelectorAll('.specialist-booking-container');
             existingBookingButtons.forEach(btn => btn.remove());
-            enableChatInput();
-            appendMessage(message, 'user');
+            const submitBtn = document.getElementById('chat-submit-btn');
+            ChatHelpers.enableChatInput(chatInput, submitBtn);
+            ChatUI.appendMessage(chatWindow, message, 'user', allSpecializations, userLocation, chatInput, resetChatBtn);
             chatInput.disabled = true;
             TypingIndicator.show();
-            sendMessageToAPI(message);
-        }
-    });
-    
-    async function sendMessageToAPI(userMessage) {
-        try {
-            const token = localStorage.getItem('user_token');
-            const headers = { 'Content-Type': 'application/json' };
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-            const response = await fetch('/chat/message', {
-                method: 'POST',
-                headers: headers,
-                body: JSON.stringify({ 
-                    session_id: sessionId,
-                    messages: [{ role: 'user', content: userMessage }]
-                })
-            });
-            if (!response.ok) throw new Error(`Errore dal server: ${response.statusText}`);
-            const aiData = await response.json();
-            if (aiData.content) appendMessage(aiData.content, 'assistant');
-        } catch (error) {
-            console.error('Chat error:', error);
-            appendMessage('Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant');
-        } finally {
-            setTimeout(() => {
-                TypingIndicator.hide();
-                chatInput.disabled = false;
-                chatInput.focus();
-            }, 500);
-        }
-    }
-
-    function detectSpecialistRecommendation(text) {
-        const lowerText = text.toLowerCase();
-        const specializationTriggers = [
-            'allergologia', 'allergologo', 'andrologia', 'andrologo', 'angiologia', 'angiologo', 'audioprotesista',
-            'cardiochirurgia', 'cardiochirurgo', 'cardiologia', 'cardiologo', 'chirurgia generale', 'chirurgo generale',
-            'chirurgia maxillo-facciale', 'chirurgo maxillo-facciale', 'chirurgia plastica', 'chirurgo plastico', 'chirurgia estetica',
-            'chirurgia toracica', 'chirurgo toracico', 'chirurgia vascolare', 'chirurgo vascolare',
-            'dermatologia', 'dermatologo', 'venerologia', 'diabetologia', 'diabetologo',
-            'dietologia', 'dietologo', 'nutrizionista', 'nutrizione', 'ematologia', 'ematologo',
-            'endocrinologia', 'endocrinologo', 'epatologia', 'epatologo', 'fisiatria', 'fisiatra',
-            'fisioterapia', 'fisioterapista', 'massofisioterapia', 'gastroenterologia', 'gastroenterologo',
-            'geriatria', 'geriatra', 'ginecologia', 'ginecologo', 'immunologia', 'immunologo',
-            'infettivologia', 'infettivologo', 'logopedia', 'logopedista', 'medicina dello sport', 'medico dello sport',
-            'medicina legale', 'medico legale', 'medico di medicina generale', 'medicina generale', 'medico di base',
-            'nefrologia', 'nefrologo', 'neurochirurgia', 'neurochirurgo', 'neurologia', 'neurologo',
-            'odontoiatria', 'odontoiatra', 'dentista', 'ortodonzia', 'oftalmologia', 'oculistica', 'oculista',
-            'oncologia', 'oncologo', 'ortopedia', 'ortopedico', 'osteopatia', 'osteopata',
-            'otorinolaringoiatria', 'otorino', 'pediatria', 'pediatra', 'pneumologia', 'pneumologo',
-            'podologia', 'podologo', 'psichiatria', 'psichiatra', 'radiologia', 'radiologo',
-            'reumatologia', 'reumatologo', 'urologia', 'urologo'
-        ];
-        return specializationTriggers.some(trigger => lowerText.includes(trigger));
-    }
-    
-    function extractSpecialistInfo(text) {
-        if (!allSpecializations || allSpecializations.length === 0) return null;
-        const lowerText = text.toLowerCase();
-        const specializationMapping = {
-            'allergologo': 'Allergologia', 'andrologo': 'Andrologia', 'angiologo': 'Angiologia',
-            'cardiochirurgo': 'Cardiochirurgia', 'cardiologo': 'Cardiologia', 'chirurgo generale': 'Chirurgia Generale',
-            'chirurgo maxillo-facciale': 'Chirurgia Maxillo-Facciale', 'chirurgo plastico': 'Chirurgia Plastica ed Estetica', 'chirurgia estetica': 'Chirurgia Plastica ed Estetica',
-            'chirurgo toracico': 'Chirurgia Toracica', 'chirurgo vascolare': 'Chirurgia Vascolare',
-            'dermatologo': 'Dermatologia e Venerologia', 'venerologia': 'Dermatologia e Venerologia', 'diabetologo': 'Diabetologia',
-            'dietologo': 'Dietologia e Nutrizione', 'nutrizionista': 'Dietologia e Nutrizione', 'ematologo': 'Ematologia',
-            'endocrinologo': 'Endocrinologia', 'epatologo': 'Epatologia', 'fisiatra': 'Fisiatria',
-            'fisioterapista': 'Fisioterapia e Massofisioterapia', 'gastroenterologo': 'Gastroenterologia',
-            'geriatra': 'Geriatria', 'ginecologo': 'Ginecologia', 'immunologo': 'Immunologia',
-            'infettivologo': 'Infettivologia', 'logopedista': 'Logopedia', 'medico dello sport': 'Medicina dello Sport',
-            'medico legale': 'Medicina Legale', 'medicina generale': 'Medico di Medicina Generale', 'medico di base': 'Medico di Medicina Generale',
-            'nefrologo': 'Nefrologia', 'neurochirurgo': 'Neurochirurgia', 'neurologo': 'Neurologia',
-            'odontoiatra': 'Odontoiatria e Ortodonzia', 'dentista': 'Odontoiatria e Ortodonzia', 'ortodonzia': 'Odontoiatria e Ortodonzia',
-            'oftalmologo': 'Oftalmologia (Oculistica)', 'oculista': 'Oftalmologia (Oculistica)', 'oncologo': 'Oncologia',
-            'ortopedico': 'Ortopedia', 'osteopata': 'Osteopatia', 'otorino': 'Otorinolaringoiatria',
-            'pediatra': 'Pediatria', 'pneumologo': 'Pneumologia', 'podologo': 'Podologia',
-            'psichiatra': 'Psichiatria', 'radiologo': 'Radiologia e Radiologia Diagnostica',
-            'reumatologo': 'Reumatologia', 'urologo': 'Urologia'
-        };
-        for (const spec of allSpecializations) {
-            if (lowerText.includes(spec.nome.toLowerCase())) return { id: spec.id, name: spec.nome };
-        }
-        for (const [variation, fullName] of Object.entries(specializationMapping)) {
-            if (lowerText.includes(variation)) {
-                const spec = allSpecializations.find(s => s.nome === fullName);
-                if (spec) return { id: spec.id, name: spec.nome };
+            try {
+                const aiData = await ChatAPI.sendMessage(sessionId, message);
+                if (aiData.content) ChatUI.appendMessage(chatWindow, aiData.content, 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
+            } catch (error) {
+                console.error('Chat error:', error);
+                ChatUI.appendMessage(chatWindow, 'Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
+            } finally {
+                setTimeout(() => {
+                    TypingIndicator.hide();
+                    chatInput.disabled = false;
+                    chatInput.focus();
+                }, 500);
             }
         }
-        return null;
-    }
-    
-    function disableChatInput() {
-        chatInput.disabled = true;
-        chatInput.placeholder = "Clicca 'Prenota ora!' o inizia una nuova conversazione";
-        document.getElementById('chat-submit-btn').disabled = true;
-        resetChatBtn.style.display = 'block';
-    }
-    
-    function enableChatInput() {
-        chatInput.disabled = false;
-        chatInput.placeholder = "Es. 'Ho un forte mal di schiena da alcuni giorni...'";
-        document.getElementById('chat-submit-btn').disabled = false;
-        chatInput.focus();
-    }
-    
-    function createBookingButton(specialistInfo) {
-        const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'specialist-booking-container';
-        const bookingButton = document.createElement('button');
-        bookingButton.className = 'quick-action-btn specialist-booking-btn';
-        bookingButton.textContent = '🩺 Prenota ora!';
-        bookingButton.addEventListener('click', () => { handleBookingRedirect(specialistInfo); });
-        buttonContainer.appendChild(bookingButton);
-        return buttonContainer;
-    }
-    
-    function handleBookingRedirect(specialistInfo) {
-        const params = new URLSearchParams();
-        params.append('specializzazione_id', specialistInfo.id);
-        if (userLocation && userLocation.lat && userLocation.lon) {
-            params.append('lat', userLocation.lat);
-            params.append('lon', userLocation.lon);
-        }
-        window.location.href = `/medici?${params.toString()}`;
+    });
+
+    // Riconoscimento specialista ed estrazione info centralizzati in ChatHelpers (main.js)
+
+    // Inizializza geolocalizzazione all'avvio per una migliore UX
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            window.userLocation = userLocation;
+        }, (error) => {
+            // Non impostare fallback - "Vicino a me" apparirà solo con geolocalizzazione reale
+            console.log('Geolocalizzazione non disponibile');
+        });
     }
 
     checkAuthenticationAndInitializeChat();

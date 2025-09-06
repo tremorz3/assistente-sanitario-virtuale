@@ -5,11 +5,10 @@ Inoltra le richieste di login, registrazione e recupero dati utente al backend.
 from fastapi import APIRouter, Request, Form, HTTPException, Header
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
-from datetime import date
 from typing import Dict, Any, Optional
 
-from utils.models import APIParams
-from utils.api_client import call_api
+from utils.api_utils import public_call, authenticated_call
+from utils.auth_utils import require_authorization
 
 # Creazione del router per il proxy di autenticazione
 router = APIRouter(
@@ -32,14 +31,11 @@ async def post_login_page(payload: Dict[str, str]) -> JSONResponse:
     '''
     try:
         # Preparazione dei parametri per la chiamata API usando il payload ricevuto
-        login_params: APIParams = APIParams(
+        response_data = public_call(
             method="POST",
             endpoint="/login",
             payload={"email": payload.get("email"), "password": payload.get("password")}
         )
-
-        # Chiama il backend e restituisce direttamente la sua risposta JSON
-        response_data = call_api(login_params)
         return JSONResponse(content=response_data)
         
     except HTTPException as e:
@@ -62,7 +58,6 @@ async def post_register_page(
         request (Request): Oggetto di richiesta FastAPI.
         nome (str): Nome del paziente.
         cognome (str): Cognome del paziente.
-        data_di_nascita (date): Data di nascita del paziente.
         telefono (str): Numero di telefono del paziente.
         email (str): Indirizzo email del paziente.
         password (str): Password del paziente.
@@ -82,13 +77,7 @@ async def post_register_page(
         }
         
         # Parametri per la funzione helper
-        register_params: APIParams = APIParams(
-            method="POST",
-            endpoint="/register/paziente",
-            payload=patient_payload
-        )
-
-        call_api(register_params)
+        public_call(method="POST", endpoint="/register/paziente", payload=patient_payload)
         
         return RedirectResponse(url="/pagina-login?success=true", status_code=303)
 
@@ -146,21 +135,14 @@ async def post_medico_register_page(
             "indirizzo_studio": indirizzo_studio
         }
         
-        register_params = APIParams(
-            method="POST",
-            endpoint="/register/medico",
-            payload=medico_payload
-        )
-
-        call_api(register_params)
+        public_call(method="POST", endpoint="/register/medico", payload=medico_payload)
         
         return RedirectResponse(url="/pagina-login?success=true", status_code=303)
 
     except HTTPException as e:
         # Se fallisce, ricarica le specializzazioni per mostrare di nuovo il form
         try:
-            params = APIParams(method="GET", endpoint="/specializzazioni/")
-            lista_specializzazioni = call_api(params)
+            lista_specializzazioni = public_call(method="GET", endpoint="/specializzazioni")
         except HTTPException:
             lista_specializzazioni = []
 
@@ -177,20 +159,5 @@ async def proxy_get_me(authorization: Optional[str] = Header(None)):
     Endpoint proxy che inoltra la richiesta per ottenere i dati dell'utente
     autenticato al backend.
     """
-    # Se l'header di autorizzazione non è presente, non possiamo fare nulla.
-    if authorization is None:
-        raise HTTPException(status_code=401, detail="Missing Authorization Header")
-        
-    # Estraiamo il token dall'header
-    try:
-        token_type, token = authorization.split()
-        if token_type.lower() != "bearer":
-            raise HTTPException(status_code=401, detail="Invalid token type")
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid Authorization Header format")
-
-    # Usiamo la funzione call_api per inoltrare la chiamata al backend,
-    # passando il token per l'autenticazione.
-    api_params = APIParams(method="GET", endpoint="/me")
-    
-    return call_api(params=api_params, token=token)
+    token = require_authorization(authorization)
+    return authenticated_call(method="GET", endpoint="/me", authorization=authorization)

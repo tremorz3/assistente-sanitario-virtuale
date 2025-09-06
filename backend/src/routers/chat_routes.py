@@ -8,11 +8,11 @@ Implementa thread isolation per sicurezza: ogni utente ha thread privati.
 Architettura: FastAPI → JWT Auth → LangGraph Orchestrator → AI Response
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 import logging
 
-from utils.auth import get_current_user, get_optional_current_user
+from utils.auth import get_optional_current_user
 from utils.models import ChatMessage, ChatResponse, UserOut
 from chat.orchestrator import invoke_orchestrator, memory
 

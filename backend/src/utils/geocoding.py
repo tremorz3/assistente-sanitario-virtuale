@@ -60,7 +60,7 @@ def get_address_suggestions(query: str) -> List[AddressSuggestion]:
         return []
 
     params = {
-        'q': query, 'format': 'json', 'limit': 5, 'addressdetails': 1
+        'q': query, 'format': 'json', 'limit': 1, 'addressdetails': 1, 'countrycodes': 'it', 'dedupe': 1
     }
     headers = { 'User-Agent': 'AssistenteSanitarioTesi/1.0' }
 
@@ -71,25 +71,8 @@ def get_address_suggestions(query: str) -> List[AddressSuggestion]:
 
         suggestions_list = []
         for item in data:
-            address_parts = item.get('address', {})
-
-            road = address_parts.get('road')
-            house_number = address_parts.get('house_number')
-            postcode = address_parts.get('postcode')
-            city = address_parts.get('city') or address_parts.get('town') or address_parts.get('village')
-
-            display_parts = []
-            if road:
-                street_part = f"{road}{' ' + house_number if house_number else ''}"
-                display_parts.append(street_part)
-            if city:
-                display_parts.append(city)
-            if postcode:
-                display_parts.append(postcode)
-
-            # Crea l'oggetto AddressSuggestion includendo lat e lon
             suggestion_obj = AddressSuggestion(
-                display_address=", ".join(display_parts),
+                display_address=item.get('display_name', '').replace(', Italia', ''),
                 validation_address=item.get('display_name', ''),
                 lat=float(item.get('lat', 0.0)),
                 lon=float(item.get('lon', 0.0))

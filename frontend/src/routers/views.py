@@ -5,11 +5,10 @@ unico posto semplifica la gestione del routing delle pagine.
 """
 import os
 from fastapi import APIRouter, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from utils.api_client import call_api
-from utils.models import APIParams
+from utils.api_utils import public_call
 
 # Creazione del router per le viste
 router = APIRouter(
@@ -49,8 +48,7 @@ async def get_medico_register_page(request: Request):
     la lista delle specializzazioni dall'API del backend.
     '''
     try:
-        params = APIParams(method="GET", endpoint="/specializzazioni/")
-        lista_specializzazioni = call_api(params)
+        lista_specializzazioni = public_call(method="GET", endpoint="/specializzazioni")
 
         # Invio della lista al template
         context = {"request": request, "specializzazioni": lista_specializzazioni}
@@ -97,14 +95,3 @@ async def get_gestione_disponibilita_page(request: Request) -> HTMLResponse:
 async def get_medico_recensioni_page(request: Request) -> HTMLResponse:
     """Mostra la pagina con l'elenco delle recensioni ricevute dal medico."""
     return templates.TemplateResponse("recensioni-medico.html", {"request": request})
-
-# Redirect per route comuni
-@router.get("/login")
-async def redirect_login():
-    """Redirect from /login to /pagina-login."""
-    return RedirectResponse(url="/pagina-login", status_code=301)
-
-@router.get("/lista-medici")
-async def redirect_lista_medici():
-    """Redirect from /lista-medici to /medici."""
-    return RedirectResponse(url="/medici", status_code=301)

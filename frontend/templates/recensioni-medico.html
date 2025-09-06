@@ -19,6 +19,14 @@
 <script>
     window.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('recensioni-container');
+        
+        // Verifica se l'utente è autenticato
+        const token = localStorage.getItem('user_token');
+        if (!token) {
+            container.innerHTML = '<p>Devi effettuare il login come medico per visualizzare le tue recensioni. <a href="/pagina-login">Accedi qui</a></p>';
+            return;
+        }
+        
         try {
             // Chiamata all'endpoint del proxy per ottenere le recensioni del medico loggato
             const recensioni = await callApi('/api/valutazioni/medico/me');
@@ -40,13 +48,14 @@
                 }
                 stelleHtml += '</div>';
 
+                const commentHtml = recensione.commento ? escapeHtml(recensione.commento) : '<i>Nessun commento lasciato.</i>';
                 card.innerHTML = `
                     <div class="recensione-header">
                         ${stelleHtml}
                         <span class="data-recensione">${new Date(recensione.data_valutazione).toLocaleDateString('it-IT')}</span>
                     </div>
                     <div class="recensione-body">
-                        <p>${recensione.commento || '<i>Nessun commento lasciato.</i>'}</p>
+                        <p>${commentHtml}</p>
                     </div>
                 `;
                 container.appendChild(card);
@@ -54,7 +63,13 @@
 
         } catch (error) {
             console.error("Impossibile caricare le recensioni:", error);
-            container.innerHTML = '<p>Si è verificato un errore durante il caricamento delle recensioni.</p>';
+            
+            // Gestione specifica per errori di autenticazione
+            if (error.message.includes('Sessione scaduta') || error.message.includes('Not authenticated')) {
+                container.innerHTML = '<p>Devi effettuare il login come medico per visualizzare le tue recensioni. <a href="/pagina-login">Accedi qui</a></p>';
+            } else {
+                container.innerHTML = '<p>Si è verificato un errore durante il caricamento delle recensioni.</p>';
+            }
         }
     });
 </script>

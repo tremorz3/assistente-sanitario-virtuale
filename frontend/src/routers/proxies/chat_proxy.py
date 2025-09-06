@@ -11,8 +11,8 @@ Il proxy è necessario per evitare problemi CORS e centralizzare la logica di co
 from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 
-from utils.models import APIParams, ChatMessage, ChatResponse, ChatRequestFromBrowser, ChatResponseToBrowser
-from utils.api_client import call_api
+from utils.models import ChatMessage, ChatRequestFromBrowser, ChatResponseToBrowser
+from utils.api_utils import authenticated_call
 
 router = APIRouter(
     tags=["Frontend - Proxy Chat"]
@@ -42,17 +42,8 @@ async def proxy_chat_message(request: ChatRequestFromBrowser, authorization: Opt
         session_id=request.session_id  # Mantiene coerenza sessione
     )
 
-    # Costruisce la chiamata API verso il backend
-    api_params = APIParams(
-        method="POST",
-        endpoint="/chat/message",  # Endpoint backend LangGraph
-        payload=chat_message.model_dump()  # Serializza a dict per HTTP
-    )
-    
-    # Estrae JWT token dall'header Authorization (formato: "Bearer <token>")
-    # Se non c'è token, invia None (per utenti non autenticati)
-    token = authorization.split(" ")[1] if authorization and " " in authorization else None
-    response_data = call_api(api_params, token)
+    # Chiamata al backend tramite helper autenticato (supporta anche None)
+    response_data = authenticated_call("POST", "/chat/message", authorization, chat_message.model_dump())
     
     # Trasforma risposta backend ("response" field) → browser ("content" field)
     return ChatResponseToBrowser(
@@ -74,11 +65,5 @@ async def proxy_reset_chat(request: ChatRequestFromBrowser, authorization: Optio
         session_id=request.session_id  # Identifica quale thread cancellare
     )
     
-    api_params = APIParams(
-        method="POST",
-        endpoint="/chat/reset",
-        payload=chat_message.model_dump()
-    )
-    token = authorization.split(" ")[1] if authorization and " " in authorization else None
-    response_data = call_api(api_params, token)
+    response_data = authenticated_call("POST", "/chat/reset", authorization, chat_message.model_dump())
     return response_data

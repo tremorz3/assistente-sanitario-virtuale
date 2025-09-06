@@ -6,8 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Body, Header
 
-from utils.api_client import call_api
-from utils.models import APIParams
+from utils.api_utils import authenticated_call
 
 router = APIRouter(
     prefix="/api/disponibilita",
@@ -23,9 +22,7 @@ async def proxy_crea_disponibilita(
     Proxy per inoltrare la richiesta di creazione di una nuova disponibilità al backend.
     Richiede autenticazione.
     """
-    token: Optional[str] = authorization.split(" ")[1] if authorization else None
-    api_params: APIParams = APIParams(method="POST", endpoint="/disponibilita", payload=payload)
-    return call_api(params=api_params, token=token)
+    return authenticated_call("POST", "/disponibilita", authorization, payload)
 
 @router.delete("/{disponibilita_id}")
 async def proxy_cancella_disponibilita(
@@ -36,6 +33,4 @@ async def proxy_cancella_disponibilita(
     Proxy per inoltrare la richiesta di cancellazione di una disponibilità al backend.
     Richiede autenticazione.
     """
-    token: Optional[str] = authorization.split(" ")[1] if authorization else None
-    api_params: APIParams = APIParams(method="DELETE", endpoint=f"/disponibilita/{disponibilita_id}")
-    return call_api(params=api_params, token=token)
+    return authenticated_call("DELETE", f"/disponibilita/{disponibilita_id}", authorization)

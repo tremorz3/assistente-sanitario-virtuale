@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, List, Literal, Dict, Any
+from typing import Optional, Literal
 
 # Modelli per la registrazione Paziente e Medico
 class PazienteRegisration(BaseModel):
@@ -81,7 +81,7 @@ class MedicoOut(BaseModel):
     specializzazione_nome: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MedicoGeolocalizzatoOut(MedicoOut):
     """
@@ -132,7 +132,7 @@ class DisponibilitaOut(DisponibilitaBase):
     is_prenotato: bool
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Modelli per la tabella Prenotazione
 class PrenotazioneBase(BaseModel):
@@ -157,7 +157,7 @@ class PrenotazioneOut(PrenotazioneBase):
     stato: Literal['Confermata', 'Completata', 'Cancellata']
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class PrenotazioneDetailOut(PrenotazioneOut):
     """
@@ -205,7 +205,7 @@ class ValutazioneOut(ValutazioneBase):
     data_valutazione: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # Modelli per la funzionalità chat
 class ChatMessage(BaseModel):

@@ -362,6 +362,36 @@ a:hover {
     }
 }
 
+/* ==============================================
+   Stili per pulsante di prenotazione specialisti (da index.html)
+   ==============================================
+*/
+.specialist-booking-container {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.specialist-booking-btn {
+    background-color: #28a745; /* Success green */
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: normal;
+    max-width: 200px;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+.specialist-booking-btn:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
 #geo-status {
     font-size: 0.9em;
     color: var(--text-secondary);
@@ -950,7 +980,8 @@ a:hover {
     overflow-y: auto;
 }
 
-.autocomplete-items div {
+.autocomplete-items div,
+.autocomplete-suggestion {
     padding: 10px;
     cursor: pointer;
     background-color: var(--bg-dark-secondary);
@@ -958,7 +989,8 @@ a:hover {
     color: var(--text-primary);
 }
 
-.autocomplete-items div:hover {
+.autocomplete-items div:hover,
+.autocomplete-suggestion:hover {
     background-color: var(--primary-color);
     color: white;
 }

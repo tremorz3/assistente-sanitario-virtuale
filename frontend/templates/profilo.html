@@ -89,10 +89,10 @@
                 actionsHtml += '</div>';
 
                 card.innerHTML = `
-                    <h3>Dr. ${p.medico_nome} ${p.medico_cognome}</h3>
+                    <h3>Dr. ${escapeHtml(p.medico_nome)} ${escapeHtml(p.medico_cognome)}</h3>
                     <p><strong>Data:</strong> ${dataVisita.toLocaleDateString('it-IT', {day: '2-digit', month: 'long', year: 'numeric'})}</p>
                     <p><strong>Ora:</strong> ${dataVisita.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</p>
-                    <p><strong>Stato:</strong> ${p.stato}</p>
+                    <p><strong>Stato:</strong> ${escapeHtml(p.stato)}</p>
                     ${actionsHtml}
                 `;
                 
@@ -161,26 +161,6 @@
         }
     });
 
-    // --- MODIFICA QUI: Sostituzione di confirm() e alert() ---
-    async function handleCancelClick(prenotazioneId) {
-        const userConfirmed = await SalusNotifier.confirm(
-            "Sei sicuro di voler cancellare questa prenotazione?",
-            "Conferma Cancellazione"
-        );
-
-        if (userConfirmed) {
-            try {
-                await callApi(`/api/prenotazioni/${prenotazioneId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ stato: 'Cancellata' })
-                });
-                SalusNotifier.alert('Prenotazione cancellata con successo!', 'Operazione Completata');
-                setTimeout(() => window.location.reload(), 1500);
-            } catch (error) {
-                SalusNotifier.alert(`Errore: ${error.message}`, 'Errore');
-            }
-        }
-    }
+    // Funzione globale spostata in static/js/main.js: handleCancelClick
 </script>
 {% endblock %}
