@@ -234,3 +234,10 @@ Icon?
 # Dati generati dai container (DA IGNORARE!)
 /mariadb_data/
 /ollama_data/
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

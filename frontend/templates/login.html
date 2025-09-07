@@ -33,43 +33,24 @@
         const data = Object.fromEntries(formData.entries());
 
         try {
-            // Esegue la chiamata API, inviando i dati come JSON
-            const response = await fetch('/pagina-login', {
+            // Esegue la chiamata API usando l'helper centralizzato - con flag isLoginRequest
+            const responseData = await callApi('/pagina-login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json' // Specifica che stiamo inviando JSON
-                },
-                body: JSON.stringify(data) // Converte l'oggetto JS in una stringa JSON
-            });
-            
-            // Attende la risposta e la converte da JSON
-            const responseData = await response.json();
+                body: JSON.stringify(data)
+            }, true);
 
-            if (response.ok) {
-                // Se il login ha successo (status 2xx)
-                localStorage.setItem('user_token', responseData.token.access_token);
-                
-                if (responseData.tipo_utente === 'medico') {
-                    window.location.href = '/dashboard-medico';
-                } else {
-                    window.location.href = '/profilo';
-                }
+            // callApi gestisce automaticamente gli errori HTTP, quindi arriviamo qui solo in caso di successo
+            localStorage.setItem('user_token', responseData.token.access_token);
+            
+            if (responseData.tipo_utente === 'medico') {
+                window.location.href = '/dashboard-medico';
             } else {
-                // Se il login fallisce (status 4xx, 5xx)
-                // MODIFICA: Gestisce correttamente il messaggio di errore
-                if (typeof responseData.detail === 'string') {
-                    // Se il dettaglio è una semplice stringa (es. "Email o password non validi")
-                    errorMessageDiv.textContent = responseData.detail;
-                } else {
-                    // Se il dettaglio è complesso (come un errore di validazione 422)
-                    errorMessageDiv.textContent = 'Dati non validi. Controlla i campi inseriti.';
-                }
-                errorMessageDiv.classList.remove('hidden'); // Mostra il box dell'errore
+                window.location.href = '/profilo';
             }
         } catch (error) {
-            // Errore di rete o di connessione
+            // callApi gestisce automaticamente logout per 401, qui gestiamo altri errori
             console.error('Errore durante il login:', error);
-            errorMessageDiv.textContent = 'Impossibile connettersi al server. Riprova più tardi.';
+            errorMessageDiv.textContent = error.message || 'Impossibile connettersi al server. Riprova più tardi.';
             errorMessageDiv.classList.remove('hidden');
         }
     });

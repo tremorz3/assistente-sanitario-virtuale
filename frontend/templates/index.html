@@ -152,8 +152,14 @@
         } finally {
             setTimeout(() => {
                 TypingIndicator.hide();
-                chatInput.disabled = false;
-                chatInput.focus();
+                // Aggiungiamo un piccolo delay per permettere ai pulsanti di essere aggiunti al DOM
+                setTimeout(() => {
+                    const hasBookingButtons = chatWindow.querySelector('.specialist-booking-container');
+                    if (!hasBookingButtons) {
+                        chatInput.disabled = false;
+                        chatInput.focus();
+                    }
+                }, 100);
             }, 500);
         }
     });
@@ -165,8 +171,6 @@
         const welcomeMessageHTML = `<div class="chat-message assistant-message"><p>Ciao! Sono MediClick AI e sono qui per aiutarti.</p></div>`;
         chatWindow.innerHTML = welcomeMessageHTML;
         showQuickActionButtons();
-        const submitBtn = document.getElementById('chat-submit-btn');
-        ChatHelpers.enableChatInput(chatInput, submitBtn);
         try {
             const resetSuccess = await ChatAPI.resetSession(sessionId);
             if (resetSuccess) {
@@ -332,8 +336,14 @@
             } finally {
                 setTimeout(() => {
                     TypingIndicator.hide();
-                    chatInput.disabled = false;
-                    chatInput.focus();
+                    // Aggiungiamo un piccolo delay per permettere ai pulsanti di essere aggiunti al DOM
+                    setTimeout(() => {
+                        const hasBookingButtons = chatWindow.querySelector('.specialist-booking-container');
+                        if (!hasBookingButtons) {
+                            chatInput.disabled = false;
+                            chatInput.focus();
+                        }
+                    }, 100);
                 }, 500);
             }
         }

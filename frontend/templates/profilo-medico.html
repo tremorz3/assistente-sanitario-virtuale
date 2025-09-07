@@ -72,7 +72,7 @@
         }
 
         try {
-            const medico = await fetch(`/medici/api/${medicoId}/details`).then(res => res.json());
+            const medico = await callApi(`/medici/api/${medicoId}/details`);
 
             document.getElementById('medico-nome').textContent = `Dr. ${medico.nome} ${medico.cognome}`;
             document.getElementById('medico-specializzazione').textContent = medico.specializzazione_nome;
@@ -81,7 +81,7 @@
             document.getElementById('medico-punteggio').textContent = medico.punteggio_medio.toFixed(2);
             document.title = `Profilo Dr. ${medico.nome} ${medico.cognome} - MediClick`;
             
-            const disponibilita = await fetch(`/medici/api/${medicoId}/disponibilita?solo_libere=true`).then(res => res.json());
+            const disponibilita = await callApi(`/medici/api/${medicoId}/disponibilita?solo_libere=true`);
             
             containerDisponibilita.innerHTML = ''; 
             if (disponibilita.length === 0) {
