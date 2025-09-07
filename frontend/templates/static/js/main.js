@@ -188,7 +188,7 @@ SalusNotifier.overlay.addEventListener('click', (e) => {
  * in base allo stato di login e al ruolo dell'utente.
  */
 function updateNavbar() {
-    const token = localStorage.getItem('user_token');
+    const token = getAuthToken();
     const isLoggedIn = !!token;
     let userType = null;
 
@@ -228,9 +228,11 @@ function updateNavbar() {
     // Link di logout: visibile solo se l'utente È loggato
     navItems.logout?.classList.toggle('hidden', !isLoggedIn);
 
-    // Link "I Nostri Medici": visibile per tutti tranne che per i medici.
+    // Link "I Nostri Medici": nascosto nella homepage, visibile altrove (tranne per i medici)
+    const isHomepage = window.location.pathname === '/';
     const isMedico = userType === 'medico';
-    navItems.cercaMedici?.classList.toggle('hidden', isMedico);
+    const shouldHideCercaMedici = isHomepage || isMedico;
+    navItems.cercaMedici?.classList.toggle('hidden', shouldHideCercaMedici);
 
     // Link specifici per il PAZIENTE
     navItems.profiloPaziente?.classList.toggle('hidden', userType !== 'paziente');
@@ -270,6 +272,14 @@ function parseJwt(token) {
 }
 
 /**
+ * Funzione helper per ottenere il token di autenticazione.
+ * @returns {string|null} - Il token JWT o null se non presente.
+ */
+function getAuthToken() {
+    return localStorage.getItem('user_token');
+}
+
+/**
  * Esegue il logout dell'utente.
  */
 function logout() {
@@ -282,27 +292,41 @@ function logout() {
  * Aggiunge il token JWT e gestisce gli errori 401 (Unauthorized).
  * @param {string} endpoint - L'URL dell'API da chiamare.
  * @param {object} options - Opzioni per la richiesta `fetch` (method, headers, body).
+ * @param {boolean} isLoginRequest - Indica se questa è una richiesta di login (default: false).
  * @returns {Promise<object>} - I dati JSON della risposta.
  */
-async function callApi(endpoint, options = {}) {
-    const token = localStorage.getItem('user_token');
+async function callApi(endpoint, options = {}, isLoginRequest = false) {
+    const token = getAuthToken();
     
     const headers = options.headers || {};
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
+    
+    // Aggiungi automaticamente Content-Type per richieste con body JSON
+    if (options.body && typeof options.body === 'string' && !headers['Content-Type']) {
+        headers['Content-Type'] = 'application/json';
+    }
+    
     options.headers = headers;
 
     const response = await fetch(endpoint, options);
 
     if (response.status === 401) {
-        logout();
-        throw new Error('Sessione scaduta. Effettua nuovamente il login.');
+        if (isLoginRequest) {
+            // Per richieste di login, l'errore 401 indica credenziali errate
+            throw new Error('Email o password errati.');
+        } else {
+            // Per altre richieste, l'errore 401 indica sessione scaduta
+            logout();
+            throw new Error('Sessione scaduta. Effettua nuovamente il login.');
+        }
     }
     
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: `Errore HTTP: ${response.status}` }));
-        throw new Error(errorData.detail);
+        const errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail) || `Errore HTTP: ${response.status}`;
+        throw new Error(errorMessage);
     }
 
     return response.status === 204 ? {} : response.json();
@@ -405,7 +429,6 @@ function initAddressAutocomplete(inputId, suggestionsContainerId, onSuggestionSe
 
     // Mostra "Vicino a me" al focus se disponibile
     input.addEventListener('focus', function() {
-        console.log('Focus event triggered!', {customRenderer: !!customRenderer, userLocation: window.userLocation});
         if (customRenderer && window.userLocation) {
             // Mostra solo "Vicino a me" quando il campo viene cliccato/focussato
             showAddressSuggestions([], suggestionsContainer, input, onSuggestionSelect, customRenderer);
@@ -600,7 +623,7 @@ const ChatAPI = {
             throw new Error('Messaggio non valido');
         }
 
-        const token = localStorage.getItem('user_token');
+        const token = getAuthToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
         
@@ -625,7 +648,7 @@ const ChatAPI = {
     },
 
     async resetSession(sessionId) {
-        const token = localStorage.getItem('user_token');
+        const token = getAuthToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
         const response = await fetch('/chat/reset', {
