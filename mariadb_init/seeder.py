@@ -5,6 +5,8 @@ from faker import Faker
 import random
 from datetime import datetime, timedelta
 import sys
+import json
+from shapely.geometry import shape, Point
 
 # --- CONFIGURAZIONE ---
 # Carica le variabili d'ambiente dal file .env che si trova nella root del progetto
@@ -24,6 +26,45 @@ PWD_HASH = '$2b$12$isOKlAZsvw8CkSOsugAQ7uvhtoEZVqOCH.T0zPF3PqO0UPE68ngbC'
 
 # Faker inizializzato per dati italiani
 fake = Faker('it_IT')
+
+# --- NUOVA LOGICA GEOGRAFICA ---
+italy_shape = None
+try:
+    geojson_path = os.path.join(os.path.dirname(__file__), 'italia_confini.geojson')
+    with open(geojson_path) as f:
+        geojson_data = json.load(f)
+    
+    # Crea una singola geometria unificata per tutta l'Italia
+    polygons = [shape(feature['geometry']) for feature in geojson_data['features']]
+    italy_shape = polygons[0]
+    for p in polygons[1:]:
+        italy_shape = italy_shape.union(p)
+
+    # Bounding box per la generazione di punti casuali
+    MIN_LON, MIN_LAT, MAX_LON, MAX_LAT = italy_shape.bounds
+
+except Exception as e:
+    print(f"ATTENZIONE: Impossibile caricare i confini geografici da 'italia_confini.geojson': {e}")
+    print("Le coordinate dei medici verranno generate in un rettangolo approssimativo.")
+    MIN_LAT, MAX_LAT = 36.0, 47.0
+    MIN_LON, MAX_LON = 6.0, 19.0
+
+
+def get_random_point_in_italy():
+    """
+    Genera un punto di coordinate casuale che cade ENTRO i confini italiani.
+    """
+    if not italy_shape: # Fallback se il file geojson non è stato caricato
+        return random.uniform(MIN_LAT, MAX_LAT), random.uniform(MIN_LON, MAX_LON)
+        
+    while True:
+        # Genera un punto casuale all'interno del rettangolo di delimitazione
+        random_point = Point(random.uniform(MIN_LON, MAX_LON), random.uniform(MIN_LAT, MAX_LAT))
+        
+        # Controlla se il punto è effettivamente dentro la forma dell'Italia
+        if italy_shape.contains(random_point):
+            return random_point.y, random_point.x # Ritorna (latitudine, longitudine)
+
 
 def get_db_connection():
     """Crea e restituisce una connessione al database MariaDB."""
@@ -187,11 +228,14 @@ def genera_dati():
             
             cursor.execute("INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'medico')", (email, PWD_HASH))
             utente_id = cursor.lastrowid
+
+            # --- Generazione coordinate in Italia ---
+            latitudine_italia, longitudine_italia = get_random_point_in_italy()
             
             medico_values = (
                 utente_id, random.choice(specializzazioni_ids), nome, cognome, citta,
                 fake.msisdn()[:10], f"Ordine dei Medici di {citta}", fake.numerify('#####'),
-                fake.state_abbr(), fake.street_address(), float(fake.latitude()), float(fake.longitude())
+                fake.state_abbr(), fake.street_address(), latitudine_italia, longitudine_italia
             )
             cursor.execute("""
                 INSERT INTO Medici (utente_id, specializzazione_id, nome, cognome, citta, telefono, 

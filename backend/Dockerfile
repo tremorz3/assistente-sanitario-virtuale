@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/src/ .
 # Copia anche lo script di seeding per renderlo accessibile dal backend
 COPY mariadb_init/seeder.py ./
+COPY mariadb_init/italia_confini.geojson ./
 
 CMD ["sh", "-c", "python seeder.py && exec uvicorn main:app --host 0.0.0.0 --port 8001"]
 

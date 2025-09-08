@@ -3,7 +3,7 @@ from typing import List
 import mariadb
 
 # Import dei modelli, delle utility e della dipendenza di sicurezza
-from utils.models import ValutazioneCreate, ValutazioneOut
+from utils.models import ValutazioneCreate, ValutazioneOut, ValutazioniMedicoResponse
 from utils.database_manager import db_transaction, db_readonly
 from utils.auth_decorators import get_paziente_profile_id, get_medico_profile_id
 
@@ -100,17 +100,30 @@ async def get_my_valutazioni(paziente_id: int = Depends(get_paziente_profile_id)
         valutazioni = cursor.fetchall()
         return [ValutazioneOut(**v) for v in valutazioni]
 
-@router.get("/medico/me", response_model=List[ValutazioneOut])
-async def get_my_valutazioni_medico(medico_id: int = Depends(get_medico_profile_id)) -> List[ValutazioneOut]:
+@router.get("/medico/me", response_model=ValutazioniMedicoResponse)
+async def get_my_valutazioni_medico(medico_id: int = Depends(get_medico_profile_id)) -> ValutazioniMedicoResponse:
     """
-    (Protetto) Recupera la lista di tutte le valutazioni ricevute dal medico autenticato.
+    (Protetto) Recupera la lista di tutte le valutazioni ricevute dal medico autenticato e il suo punteggio medio.
     """
     with db_readonly() as cursor:
         # Query per selezionare tutte le valutazioni di quel medico, ordinate dalla più recente.
         query = "SELECT * FROM Valutazioni WHERE medico_id = ? ORDER BY data_valutazione DESC"
         cursor.execute(query, (medico_id,))
         valutazioni = cursor.fetchall()
-        return [ValutazioneOut(**v) for v in valutazioni]
+
+        # Query per recuperare il punteggio medio direttamente dal profilo del medico
+        query_punteggio = "SELECT punteggio_medio FROM Medici WHERE id = ?"
+        cursor.execute(query_punteggio, (medico_id,))
+        medico = cursor.fetchone()
+
+        punteggio_medio = 0.0
+        if medico and medico.get('punteggio_medio') is not None:
+            punteggio_medio = medico['punteggio_medio']
+
+        return ValutazioniMedicoResponse(
+            valutazioni=[ValutazioneOut(**v) for v in valutazioni],
+            punteggio_medio=punteggio_medio
+        )
 
 @router.get("/medico/{medico_id}", response_model=List[ValutazioneOut])
 async def get_valutazioni_medico(medico_id: int) -> List[ValutazioneOut]:

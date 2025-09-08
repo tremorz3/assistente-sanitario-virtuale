@@ -8,9 +8,13 @@
     <p>Qui puoi leggere tutte le valutazioni che i pazienti hanno lasciato dopo le loro visite. Per questione di privacy, le 
         recensioni sono anonime
     </p>
+    <div class="card" style="margin-top: 20px; text-align: center; padding: 20px; background-color: var(--bg-dark-secondary);">
+        <h2 style="margin-bottom: 10px; color: var(--primary-color);">Punteggio Medio Totale</h2>
+        <p id="punteggio-medio" style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary);">N/D</p>
+    </div>
 </div>
 
-<div id="recensioni-container" class="dashboard-grid">
+<div id="recensioni-container" class="dashboard-grid" style="margin-top: 30px;">
     <p>Caricamento recensioni in corso...</p>
 </div>
 {% endblock %}
@@ -19,6 +23,7 @@
 <script>
     window.addEventListener('DOMContentLoaded', async () => {
         const container = document.getElementById('recensioni-container');
+        const punteggioMedioEl = document.getElementById('punteggio-medio');
         
         // Verifica se l'utente è autenticato
         const token = localStorage.getItem('user_token');
@@ -29,7 +34,15 @@
         
         try {
             // Chiamata all'endpoint del proxy per ottenere le recensioni del medico loggato
-            const recensioni = await callApi('/api/valutazioni/medico/me');
+            const responseData = await callApi('/api/valutazioni/medico/me');
+            const recensioni = responseData.valutazioni;
+            const punteggioMedio = responseData.punteggio_medio;
+
+            if (punteggioMedio !== null && recensioni.length > 0) {
+                punteggioMedioEl.textContent = `${punteggioMedio.toFixed(2)} / 5.00`;
+            } else {
+                punteggioMedioEl.textContent = 'N/D';
+            }
             
             container.innerHTML = '';
             if (recensioni.length === 0) {
