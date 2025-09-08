@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field, EmailStr
-from typing import Optional, Literal
+from typing import Optional, Literal, List
 
 # Modelli per la registrazione Paziente e Medico
 class PazienteRegisration(BaseModel):
@@ -206,6 +206,13 @@ class ValutazioneOut(ValutazioneBase):
 
     class Config:
         from_attributes = True
+
+class ValutazioniMedicoResponse(BaseModel):
+    """
+    Schema per la risposta aggregata delle valutazioni di un medico.
+    """
+    valutazioni: List[ValutazioneOut]
+    punteggio_medio: float
 
 # Modelli per la funzionalità chat
 class ChatMessage(BaseModel):
