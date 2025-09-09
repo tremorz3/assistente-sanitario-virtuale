@@ -28,6 +28,13 @@
         </ul>
     </div>
 </div>
+
+<div class="card" id="recensioni-medico" style="margin-top: 20px;">
+    <h2>Recensioni dei Pazienti</h2>
+    <div id="recensioni-lista">
+        <p>Caricamento recensioni...</p>
+    </div>
+</div>
     
 <div id="notifica" class="hidden"></div>
 
@@ -59,21 +66,67 @@
     // Variabile globale per tenere traccia dello slot selezionato
     let selectedSlotId = null;
 
-    // La logica di caricamento rimane la stessa...
+    /**
+     * Funzione per generare le stelle del punteggio.
+     * @param {number} punteggio - Il punteggio da 1 a 5.
+     * @returns {string} - L'HTML delle stelle.
+     */
+    function generaStelle(punteggio) {
+        let stelle = '';
+        for (let i = 1; i <= 5; i++) {
+            stelle += `<span class="star ${i <= punteggio ? 'filled' : ''}">&#9733;</span>`;
+        }
+        return `<div class="punteggio-stelle">${stelle}</div>`;
+    }
+
+    // Aggiungi questo stile per le stelle nel tag <head> o in un file CSS
+    // Per semplicità, lo inseriamo qui dinamicamente
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .punteggio-stelle .star {
+            color: #ddd; /* Grigio per le stelle vuote */
+            font-size: 1.5rem;
+        }
+        .punteggio-stelle .star.filled {
+            color: #ffc107; /* Giallo per le stelle piene */
+        }
+        .recensione-card {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+        }
+        .recensione-card:last-child {
+            border-bottom: none;
+        }
+        .recensione-card p {
+            margin: 5px 0;
+        }
+        .recensione-data {
+            font-size: 0.9rem;
+            color: #888;
+        }
+    `;
+    document.head.appendChild(style);
+
     window.addEventListener('DOMContentLoaded', async () => {
-        // ... (tutto il codice di caricamento della pagina fino alla fine)
         const pathParts = window.location.pathname.split('/');
         const medicoId = pathParts[pathParts.length - 1];
         
         const containerDisponibilita = document.getElementById('disponibilita-lista');
+        const containerRecensioni = document.getElementById('recensioni-lista');
         const isLoggedIn = !!localStorage.getItem('user_token');
         if(!isLoggedIn) {
             document.getElementById('auth-message').classList.remove('hidden');
         }
 
+        // Caricamento in parallelo delle informazioni del medico e delle recensioni
         try {
-            const medico = await callApi(`/medici/api/${medicoId}/details`);
+            const [medico, disponibilita, valutazioni] = await Promise.all([
+                callApi(`/medici/api/${medicoId}/details`),
+                callApi(`/medici/api/${medicoId}/disponibilita?solo_libere=true`),
+                callApi(`/medici/api/${medicoId}/valutazioni`) // Nuova chiamata
+            ]);
 
+            // Popola i dettagli del medico
             document.getElementById('medico-nome').textContent = `Dr. ${medico.nome} ${medico.cognome}`;
             document.getElementById('medico-specializzazione').textContent = medico.specializzazione_nome;
             document.getElementById('medico-citta').textContent = medico.citta;
@@ -81,8 +134,7 @@
             document.getElementById('medico-punteggio').textContent = medico.punteggio_medio.toFixed(2);
             document.title = `Profilo Dr. ${medico.nome} ${medico.cognome} - MediClick`;
             
-            const disponibilita = await callApi(`/medici/api/${medicoId}/disponibilita?solo_libere=true`);
-            
+            // Popola le disponibilità
             containerDisponibilita.innerHTML = ''; 
             if (disponibilita.length === 0) {
                 containerDisponibilita.innerHTML = '<li class="disabled">Nessuna disponibilità trovata.</li>';
@@ -94,7 +146,6 @@
                     
                     if (isLoggedIn) {
                         li.dataset.slotId = slot.id;
-                        // MODIFICA: La funzione ora apre il modale
                         li.addEventListener('click', () => openBookingModal(slot.id, li.textContent));
                     } else {
                         li.classList.add('disabled');
@@ -103,9 +154,29 @@
                 });
             }
 
+            // Popola le recensioni
+            containerRecensioni.innerHTML = '';
+            if (valutazioni.length === 0) {
+                containerRecensioni.innerHTML = '<p>Nessuna recensione trovata per questo medico.</p>';
+            } else {
+                valutazioni.forEach(val => {
+                    const div = document.createElement('div');
+                    div.className = 'recensione-card';
+                    const dataValutazione = new Date(val.data_valutazione);
+
+                    div.innerHTML = `
+                        ${generaStelle(val.punteggio)}
+                        <p>${val.commento || '<i>Nessun commento lasciato.</i>'}</p>
+                        <p class="recensione-data">Recensito il: ${dataValutazione.toLocaleDateString('it-IT')}</p>
+                    `;
+                    containerRecensioni.appendChild(div);
+                });
+            }
+
         } catch (error) {
-            console.error("Errore caricamento dati medico:", error);
+            console.error("Errore caricamento dati medico o recensioni:", error);
             document.querySelector('.page-header').innerHTML = '<h1>Medico non trovato</h1><p>Errore nel recupero delle informazioni.</p>';
+            containerRecensioni.innerHTML = '<p>Impossibile caricare le recensioni.</p>';
         }
     });
 
@@ -131,12 +202,11 @@
 
     // Aggiungiamo il listener per l'invio del form del modale
     bookingForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // Impedisce il ricaricamento della pagina
+        event.preventDefault(); 
         if (!selectedSlotId) return;
 
         const notePaziente = notesInput.value.trim();
 
-        // Creiamo il payload per l'API, includendo le note
         const payload = {
             disponibilita_id: parseInt(selectedSlotId),
             note_paziente: notePaziente
@@ -149,14 +219,14 @@
                 body: JSON.stringify(payload)
             });
             
-            closeBookingModal(); // Chiudiamo il modale dopo la chiamata
-            SalusNotifier.alert('Prenotazione confermata con successo! Sarai reindirizzato al tuo profilo.', 'Prenotazione Effettuata');
-            setTimeout(() => window.location.href = '/profilo', 2000);
+            closeBookingModal(); 
+            SalusNotifier.alert('Prenotazione confermata con successo! Sarai reindirizzato al tuo profilo tra pochi secondi.', 'Prenotazione Effettuata');
+            setTimeout(() => window.location.href = '/profilo', 3000);
 
         } catch(error) {
             console.error("Errore prenotazione:", error);
             closeBookingModal();
-            SalusNotifier.alert(`Errore: ${error.message}`, 'Errore di Prenotazione');
+            SalusNotifier.alert(`Errore durante la prenotazione: ${error.message}`, 'Errore di Prenotazione');
         }
     });
 

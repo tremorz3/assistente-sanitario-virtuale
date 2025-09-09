@@ -264,6 +264,20 @@ function updateNavbar() {
             navLogo.href = '/';
         }
     }
+
+    // ========= NUOVA LOGICA PER L'INDICATORE ATTIVO =========
+    const currentPath = window.location.pathname;
+    const allNavLinks = document.querySelectorAll('.nav-menu .nav-link');
+
+    allNavLinks.forEach(link => {
+        // Rimuove 'active' da tutti i link per partire da una situazione pulita
+        link.classList.remove('active');
+        
+        // Aggiunge 'active' solo al link che corrisponde alla pagina corrente
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+        }
+    });
 }
 
 /**
