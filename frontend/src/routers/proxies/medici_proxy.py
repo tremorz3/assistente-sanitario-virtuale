@@ -63,3 +63,12 @@ async def proxy_get_disponibilita_medico(medico_id: int, solo_libere: bool = Tru
     backend_endpoint = f"/disponibilita/medici/{medico_id}?solo_libere={solo_libere}"
     
     return public_call("GET", backend_endpoint)
+
+
+@router.get("/{medico_id}/valutazioni")
+async def proxy_get_valutazioni_medico(medico_id: int):
+    """
+    Endpoint proxy che chiama il backend per recuperare le valutazioni
+    di un singolo medico.
+    """
+    return public_call("GET", f"/valutazioni/medico/{medico_id}")
