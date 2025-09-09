@@ -78,7 +78,8 @@ async def get_disponibilita_medico(medico_id: int, solo_libere: bool = True):
         List[DisponibilitaOut]: Una lista di fasce orarie.
     """
     with db_readonly() as cursor:
-        query = "SELECT * FROM Disponibilita WHERE medico_id = ?"
+        # Vengono mostrate solo le disponibilità future
+        query = "SELECT * FROM Disponibilita WHERE medico_id = ? AND data_ora_inizio > NOW()"
         params = [medico_id]
         
         if solo_libere:
