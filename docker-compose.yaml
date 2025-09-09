@@ -34,7 +34,7 @@ services:
     command: >
       "ollama serve & 
        sleep 5 && 
-       (ollama list | grep -q 'qwen2.5:7b-instruct-q6_K' || ollama pull qwen2.5:7b-instruct-q6_K) && 
+       (ollama list | grep -q 'llama3.1:8b-instruct-q6_K' || ollama pull llama3.1:8b-instruct-q6_K) && 
        (ollama list | grep -q 'snowflake-arctic-embed2' || ollama pull snowflake-arctic-embed2) && 
        wait"
     healthcheck:
