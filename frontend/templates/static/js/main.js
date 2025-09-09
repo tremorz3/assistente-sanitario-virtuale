@@ -14,6 +14,19 @@
  * È il punto di ingresso di tutta la nostra logica frontend.
  */
 document.addEventListener('DOMContentLoaded', () => {
+    // ========= LOGICA PER HAMBURGER MENU =========
+    const navToggle = document.getElementById('nav-toggle');
+    const navMenu = document.getElementById('nav-menu');
+
+    if (navToggle && navMenu) {
+        navToggle.addEventListener('click', () => {
+            // Aggiunge/rimuove la classe per mostrare il menu
+            navMenu.classList.toggle('show-menu');
+            // Aggiunge/rimuove la classe per l'animazione dell'icona
+            navToggle.classList.toggle('active'); 
+        });
+    }
+
     // Funzione per aggiornare la UI della navbar
     updateNavbar();
 

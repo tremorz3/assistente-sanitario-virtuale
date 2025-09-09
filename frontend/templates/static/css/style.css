@@ -64,6 +64,7 @@ a:hover {
     position: sticky;
     top: 0;
     z-index: 1000; /* Assicura che la navbar stia sopra gli altri elementi */
+    height: 60px; /* Altezza fissa per allineare il menu a tendina */
 }
 
 .nav-container {
@@ -1458,3 +1459,80 @@ a:hover {
         font-size: 1.7rem;
     }
 }
+
+/* ==============================================
+   Stili per Hamburger Menu (Responsive)
+   ==============================================
+*/
+.nav-toggle {
+    display: none; /* Nascosto di default su schermi grandi */
+    cursor: pointer;
+    flex-direction: column;
+    gap: 5px; /* Spazio tra le linee */
+    z-index: 1100; /* Per stare sopra il menu */
+}
+
+.nav-toggle span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-primary);
+    border-radius: 2px;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Stili per schermi piccoli (es. smartphone) */
+@media screen and (max-width: 768px) {
+    .nav-toggle {
+        display: flex; /* Mostra il bottone hamburger */
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 60px; /* Allineato sotto la navbar */
+        right: 0;
+        width: 100%;
+        background-color: var(--bg-dark-secondary);
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        max-height: 0; /* Il menu è "chiuso" di default */
+        overflow: hidden;
+        transition: max-height 0.4s ease-in-out, padding 0.2s ease-in-out;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    /* Classe JS per mostrare il menu */
+    .nav-menu.show-menu {
+        max-height: 500px; /* Altezza sufficiente a mostrare tutti i link */
+        padding: 20px 0; /* Aggiunge spazio interno quando aperto */
+    }
+
+    .nav-item {
+        width: 100%;
+        text-align: center;
+    }
+
+    .nav-link {
+        display: block;
+        padding: 15px 0;
+        width: 100%;
+    }
+    
+    .nav-link:hover {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    /* Animazione per l'icona hamburger (da 3 linee a "X") */
+    .nav-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    .nav-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+    .nav-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -7px);
+    }
+}
+
