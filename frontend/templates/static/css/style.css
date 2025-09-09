@@ -993,7 +993,7 @@ a:hover {
 
 .autocomplete-items div:hover,
 .autocomplete-suggestion:hover {
-    background-color: var(--primary-color);
+    background-color: gray;
     color: white;
 }
 
