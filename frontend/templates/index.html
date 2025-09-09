@@ -32,29 +32,43 @@
     </div>
 </section>
 
-<section class="hero-section">
-    <h2>Non sai a quale medico rivolgerti?</h2>
-    <p class="subtitle">Descrivi i tuoi sintomi. MediClick AI ti aiuterà a identificare lo specialista più adatto per te.</p>
-    
-    <div id="chat-container">
-        <div id="chat-window">
-            <div class="chat-message assistant-message">
-                <p>Ciao! Sono MediClick AI e sono qui per aiutarti.</p>
-            </div>
-        </div>
-        <div id="auth-required-message" style="display: none;">
-            <p>Per utilizzare la chat, è necessario essere registrati. <a href="/pagina-login">Accedi</a> o <a href="/pagina-registrazione-paziente">Registrati come Paziente</a></p>
-        </div>
-        <form id="chat-form">
-            <textarea id="chatInput" placeholder="Es. 'Ho un forte mal di schiena da alcuni giorni...'" rows="1"></textarea>
-            <button type="submit" id="chat-submit-btn" aria-label="Invia messaggio">Invia</button>
-            <button type="button" id="reset-chat-btn" style="display: none;">Restart</button>
-        </form>
-        <div class="chat-disclaimer">
-            <small>MediClick AI può fare errori e non si sostituisce ad un medico.</small>
-        </div>
+<section class="booking-section">
+    <h2 style="text-align: center; font-size: 1.5rem; margin-bottom: 20px;">Non sai a quale medico rivolgerti?</h2>
+    <div style="text-align: center;">
+        <button id="open-ai-chat-btn" class="btn-form" style="background-color: #28a745; max-width: 200px;">
+            🤖 Chiedi all'AI
+        </button>
     </div>
 </section>
+
+<!-- Modal per la Chat AI -->
+<div id="ai-chat-modal" class="modal is-centered">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>MediClick AI - Assistente Virtuale</h3>
+            <span class="close-button" id="close-ai-chat">&times;</span>
+        </div>
+        
+        <div id="chat-container">
+            <div id="chat-window">
+                <div class="chat-message assistant-message">
+                    <p>Ciao! Sono MediClick AI e sono qui per aiutarti.</p>
+                </div>
+            </div>
+            <div id="auth-required-message" style="display: none;">
+                <p>Per utilizzare la chat, è necessario essere registrati. <a href="/pagina-login">Accedi</a> o <a href="/pagina-registrazione-paziente">Registrati come Paziente</a></p>
+            </div>
+            <form id="chat-form">
+                <textarea id="chatInput" placeholder="Es. 'Ho un forte mal di schiena da alcuni giorni...'" rows="1"></textarea>
+                <button type="submit" id="chat-submit-btn" aria-label="Invia messaggio">Invia</button>
+                <button type="button" id="reset-chat-btn" style="display: none;">Restart</button>
+            </form>
+            <div class="chat-disclaimer">
+                <small>MediClick AI può fare errori e non si sostituisce ad un medico.</small>
+            </div>
+        </div>
+    </div>
+</div>
 
 <section class="features-section">
     <div class="feature-card">
@@ -73,6 +87,41 @@
 {% block scripts %}
 <script>
     // TypingIndicator è definito in main.js - usa quello globale
+
+    // Gestione modal AI chat
+    const aiChatModal = document.getElementById('ai-chat-modal');
+    const openAiChatBtn = document.getElementById('open-ai-chat-btn');
+    const closeAiChatBtn = document.getElementById('close-ai-chat');
+
+    // Apri modal
+    openAiChatBtn.addEventListener('click', () => {
+        aiChatModal.style.display = 'flex';
+        // Focus sull'input quando si apre il modal
+        setTimeout(() => {
+            if (!chatInput.disabled) {
+                chatInput.focus();
+            }
+        }, 100);
+    });
+
+    // Chiudi modal
+    closeAiChatBtn.addEventListener('click', () => {
+        aiChatModal.style.display = 'none';
+    });
+
+    // Chiudi modal cliccando fuori
+    aiChatModal.addEventListener('click', (e) => {
+        if (e.target === aiChatModal) {
+            aiChatModal.style.display = 'none';
+        }
+    });
+
+    // Chiudi modal con ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && aiChatModal.style.display === 'flex') {
+            aiChatModal.style.display = 'none';
+        }
+    });
 
     // Tutta la logica JavaScript per la chat
     const chatForm = document.getElementById('chat-form');

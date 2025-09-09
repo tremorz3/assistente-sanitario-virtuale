@@ -1462,6 +1462,41 @@ a:hover {
 }
 
 /* ==============================================
+   Stili per Modal Chat AI
+   ==============================================
+*/
+#ai-chat-modal .modal-content {
+    max-width: 700px;
+    width: 90%;
+}
+
+#ai-chat-modal #chat-container {
+    max-width: none;
+    margin: 0;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}
+
+#ai-chat-modal #chat-window {
+    height: 400px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+/* Stile per il bottone "Parla con l'AI" */
+#open-ai-chat-btn {
+    transition: all 0.3s ease;
+}
+
+#open-ai-chat-btn:hover {
+    background-color: #218838 !important;
+    transform: translateY(-2px);
+}
+
+/* ==============================================
    Stili per Hamburger Menu (Responsive)
    ==============================================
 */
