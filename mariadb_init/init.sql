@@ -132,7 +132,7 @@ INSERT INTO Specializzazioni (nome) VALUES
 ('Urologia')
 ON DUPLICATE KEY UPDATE nome=nome; -- Evita errori se si esegue lo script più volte
 
--- RIGGER PER AGGIORNARE IL PUNTEGGIO MEDIO DEL MEDICO
+-- TRIGGER PER AGGIORNARE IL PUNTEGGIO MEDIO DEL MEDICO
 DELIMITER $$
 
 CREATE TRIGGER after_valutazione_insert
@@ -153,3 +153,13 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+-- Abilita lo scheduler di eventi se non è già attivo
+SET GLOBAL event_scheduler = ON;
+
+-- Crea un evento per pulire le disponibilità passate e non prenotate
+CREATE EVENT IF NOT EXISTS pulizia_disponibilita_passate
+ON SCHEDULE EVERY 1 HOUR
+DO
+  DELETE FROM Disponibilita
+  WHERE data_ora_fine < NOW() AND is_prenotato = FALSE;
