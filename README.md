@@ -71,9 +71,6 @@ L'intelligenza artificiale è il nucleo dell'esperienza utente per l'orientament
 * **LangGraph:** L'interazione con l'AI è gestita da un'architettura ad agenti basata su `LangGraph`. Questo permette di definire flussi conversazionali complessi in cui l'agente può decidere autonomamente se rispondere direttamente o utilizzare strumenti esterni (come la ricerca di specialisti).
 * **LangChain e FAISS:** Per fornire raccomandazioni accurate, è stato implementato un sistema **RAG**. `LangChain` viene utilizzato per orchestrare il recupero di informazioni da una base di conoscenza di specializzazioni mediche, indicizzata in un vector store **FAISS** per una ricerca semantica efficiente.
 
-## Contributi
-Questo progetto è sviluppato da [tremorz3] e [raaiss].
-
 ## Contatti
-- [Giovanni] - [pinto.2046796@studenti.uniroma1.it]
-- [Raimondo] - [massari.2067064@studenti.uniroma1.it]
+- [tremorz3] - [Giovanni] - [pinto.2046796@studenti.uniroma1.it]
+- [raaiss] - [Raimondo] - [massari.2067064@studenti.uniroma1.it]
