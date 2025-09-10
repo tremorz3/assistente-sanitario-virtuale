@@ -93,6 +93,9 @@
     const openAiChatBtn = document.getElementById('open-ai-chat-btn');
     const closeAiChatBtn = document.getElementById('close-ai-chat');
 
+    // Nascondi il modal all'avvio
+    aiChatModal.style.display = 'none';
+
     // Apri modal
     openAiChatBtn.addEventListener('click', () => {
         aiChatModal.style.display = 'flex';

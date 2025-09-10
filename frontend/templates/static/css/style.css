@@ -622,9 +622,12 @@ a:hover {
 }
 
 .modal.is-centered {
-    display: flex;
     justify-content: center;
     align-items: center;
+}
+
+.modal.is-centered[style*="display: flex"] {
+    display: flex;
 }
 
 .modal.is-centered .modal-content {
