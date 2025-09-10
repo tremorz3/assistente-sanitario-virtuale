@@ -15,7 +15,8 @@ load_dotenv(dotenv_path=dotenv_path)
 
 # Numero di record da generare
 NUM_PAZIENTI = 150
-NUM_MEDICI = 50
+# Aggiornato per riflettere i 10 medici di test + 1 admin
+NUM_MEDICI = 50 
 MIN_DISPONIBILITA_PER_MEDICO = 20
 MAX_DISPONIBILITA_PER_MEDICO = 100
 PERCENTUALE_PRENOTAZIONI = 75 # Percentuale di slot disponibili che verranno prenotati
@@ -139,35 +140,34 @@ def crea_utenti_admin(cursor, specializzazioni_ids):
     return paziente_admin_id, medico_admin_id
 
 def crea_medici_test(cursor, specializzazioni_ids):
-    """Crea 3 medici con dati reali a Roma per testare la geolocalizzazione."""
-    print("Creazione di 3 medici di test a Roma...")
+    """Crea 10 medici con dati reali a Roma per testare la geolocalizzazione con le specializzazioni più comuni."""
+    print("Creazione di 10 medici di test a Roma...")
     medici_test = [
-        {
-            "nome": "Mario", "cognome": "Rossi", "email": "dott.mario.rossi@clinic.com",
-            "citta": "Roma", "indirizzo": "Piazza del Colosseo, 1, 00184 Roma RM",
-            "lat": 41.8902, "lon": 12.4922, "spec_id": 10 # Cardiologia
-        },
-        {
-            "nome": "Giulia", "cognome": "Bianchi", "email": "dott.giulia.bianchi@clinic.com",
-            "citta": "Roma", "indirizzo": "Piazza della Rotonda, 00186 Roma RM",
-            "lat": 41.8986, "lon": 12.4769, "spec_id": 18 # Dermatologia
-        },
-        {
-            "nome": "Luca", "cognome": "Verdi", "email": "dott.luca.verdi@clinic.com",
-            "citta": "Roma", "indirizzo": "Via della Conciliazione, 00193 Roma RM",
-            "lat": 41.9022, "lon": 12.4589, "spec_id": 44 # Ortopedia
-        }
+        {"nome": "Maria", "cognome": "Russo", "spec_id": 6, "lat": 41.9028, "lon": 12.4964}, # Cardiologia
+        {"nome": "Francesco", "cognome": "Ferrari", "spec_id": 12, "lat": 41.8919, "lon": 12.5113}, # Dermatologia
+        {"nome": "Anna", "cognome": "Romano", "spec_id": 38, "lat": 41.8931, "lon": 12.4829}, # Pediatria
+        {"nome": "Marco", "cognome": "Ricci", "spec_id": 33, "lat": 41.9109, "lon": 12.4769}, # Oculistica
+        {"nome": "Elena", "cognome": "Conti", "spec_id": 31, "lat": 41.8724, "lon": 12.4801}, # Neurologia
+        {"nome": "Giovanni", "cognome": "Galli", "spec_id": 32, "lat": 41.9056, "lon": 12.4573}, # Odontoiatria e Ortodonzia
+        {"nome": "Sofia", "cognome": "Colombo", "spec_id": 20, "lat": 41.8986, "lon": 12.4768}, # Gastroenterologia
+        {"nome": "Alessandro", "cognome": "Marino", "spec_id": 28, "lat": 41.9022, "lon": 12.4549}, # Medico di Medicina Generale
+        {"nome": "Laura", "cognome": "Greco", "spec_id": 22, "lat": 41.8828, "lon": 12.4853}, # Ginecologia
+        {"nome": "Paolo", "cognome": "Lombardi", "spec_id": 35, "lat": 41.8947, "lon": 12.4922} # Ortopedia
     ]
 
     medici_ids_test = []
     for medico in medici_test:
-        cursor.execute("INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'medico')", (medico["email"], PWD_HASH))
+        nome_lower = medico["nome"].lower()
+        cognome_lower = medico["cognome"].lower()
+        email = f"dott.{nome_lower}.{cognome_lower}@clinic-roma.com"
+        
+        cursor.execute("INSERT INTO Utenti (email, password_hash, tipo_utente) VALUES (?, ?, 'medico')", (email, PWD_HASH))
         utente_id = cursor.lastrowid
         
         medico_values = (
-            utente_id, medico["spec_id"], medico["nome"], medico["cognome"], medico["citta"],
-            fake.msisdn()[:10], f"Ordine dei Medici di Roma", fake.numerify('#####'),
-            'RM', medico["indirizzo"], medico["lat"], medico["lon"]
+            utente_id, medico["spec_id"], medico["nome"], medico["cognome"], "Roma",
+            fake.msisdn()[:10], "Ordine dei Medici di Roma", fake.numerify('#####'),
+            'RM', fake.street_address(), medico["lat"], medico["lon"]
         )
         cursor.execute("""
             INSERT INTO Medici (utente_id, specializzazione_id, nome, cognome, citta, telefono, 
@@ -176,6 +176,7 @@ def crea_medici_test(cursor, specializzazioni_ids):
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, medico_values)
         medici_ids_test.append(cursor.lastrowid)
+    print(f"- Creati {len(medici_ids_test)} medici di test.")
     return medici_ids_test
 
 
@@ -218,9 +219,9 @@ def genera_dati():
         # --- 3. MEDICI ---
         crea_medici_test(cursor, specializzazioni_ids)
 
-        # Generazione medici casuali (ridotti di 4 = 3 di test + 1 admin)
-        print(f"Creazione di {NUM_MEDICI - 4} medici...")
-        for _ in range(NUM_MEDICI - 4):
+        # Generazione medici casuali (ridotti di 11 = 10 di test + 1 admin)
+        print(f"Creazione di {NUM_MEDICI - 11} medici...")
+        for _ in range(NUM_MEDICI - 11):
             nome = fake.first_name()
             cognome = fake.last_name()
             email = f"dott.{nome.lower()}.{cognome.lower()}@clinic.com"
