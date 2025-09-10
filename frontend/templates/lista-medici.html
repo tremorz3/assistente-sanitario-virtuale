@@ -240,8 +240,12 @@
             }
         }
 
-        function openFiltersModal() { filtersModal.classList.remove('hidden'); }
+        function openFiltersModal() { 
+            filtersModal.style.display = 'flex';
+            filtersModal.classList.remove('hidden'); 
+        }
         function closeFiltersModalFunc() {
+            filtersModal.style.display = 'none';
             filtersModal.classList.add('hidden');
             specSuggestionsContainer.innerHTML = '';
             citySuggestionsContainer.innerHTML = '';
