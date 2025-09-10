@@ -1,4 +1,27 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_container
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "ollama serve & 
+       sleep 5 && 
+       (ollama list | grep -q 'qwen2.5:7b-instruct-q6_K' || ollama pull qwen2.5:7b-instruct-q6_K) && 
+       (ollama list | grep -q 'snowflake-arctic-embed2' || ollama pull snowflake-arctic-embed2) && 
+       wait"
+    # MODIFICA: Healthcheck migliorato per attendere il download dei modelli.
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep 'qwen2.5:7b-instruct-q6_K' && ollama list | grep 'snowflake-arctic-embed2'"]
+      interval: 10s
+      timeout: 5s
+      retries: 999  # Aumentiamo i tentativi per dare tempo di scaricare i modelli
+      start_period: 15s
+
   db:
     image: mariadb:10.6
     container_name: mariadb_container
@@ -20,33 +43,15 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama_container
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ./ollama_data:/root/.ollama
-    entrypoint: ["/bin/sh", "-c"]
-    # Questo comando personalizzato avvia Ollama e poi scarica i modelli necessari solo se non presenti.
-    command: >
-      "ollama serve & 
-       sleep 5 && 
-       (ollama list | grep -q 'qwen2.5:7b-instruct-q6_K' || ollama pull qwen2.5:7b-instruct-q6_K) && 
-       (ollama list | grep -q 'snowflake-arctic-embed2' || ollama pull snowflake-arctic-embed2) && 
-       wait"
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    # Il database si avvierà solo quando ollama sarà 'healthy'.
+    depends_on:
+      ollama:
+        condition: service_healthy
 
   backend:
     build:
-      context: . # Il contesto di build è l'intera cartella del progetto
-      dockerfile: backend/Dockerfile # Specifichiamo dove trovare il Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: backend_api
     restart: unless-stopped
     env_file: .env
@@ -64,13 +69,11 @@ services:
       ollama:
         condition: service_healthy
 
-  # Servizio di frontend (precedentemente ui_server)
   frontend:
-    build: ./frontend # Punta alla cartella 'frontend'
+    build: ./frontend
     container_name: frontend_ui
     restart: unless-stopped
     environment:
-      # L'URL dell'API ora punta al servizio 'backend'
       API_BASE_URL: http://backend:8001
     ports:
       - "8000:8000"
