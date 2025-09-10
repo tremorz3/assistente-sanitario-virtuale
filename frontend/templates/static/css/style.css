@@ -1,0 +1,1577 @@
+/* ==============================================
+   CSS Variabili e Stile di Base (Tema Scuro)
+   ==============================================
+   Definiamo i colori del nostro tema in variabili (--nome-variabile) per poterli
+   riutilizzare facilmente in tutto il foglio di stile. Questo rende la
+   manutenzione e le modifiche future molto più semplici.
+*/
+:root {
+    --bg-dark-primary: #121212; /* Sfondo principale, un nero morbido */
+    --bg-dark-secondary: #1e1e1e; /* Sfondo per card, form e navbar */
+    --primary-color: #007bff; /* Blu primario per elementi interattivi */
+    --primary-color-hover: #0056b3; /* Blu più scuro per l'hover */
+    --text-primary: #e0e0e0; /* Colore testo principale, un grigio chiaro */
+    --text-secondary: #a0a0a0; /* Colore testo secondario, più scuro */
+    --border-color: #333; /* Colore per i bordi sottili */
+}
+
+/*
+   Reset di base e stile del body.
+   Applichiamo il nostro font 'Poppins' e i colori di base del tema.
+*/
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+}
+
+/* Stile per i link globali */
+a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+a:hover {
+    color: var(--primary-color-hover);
+}
+
+/*
+   Layout Container.
+   Questa classe centra il contenuto della pagina, lasciando dei margini laterali.
+*/
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ==============================================
+   Stile della Barra di Navigazione
+   ==============================================
+*/
+.navbar {
+    background-color: var(--bg-dark-secondary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000; /* Assicura che la navbar stia sopra gli altri elementi */
+    height: 60px; /* Altezza fissa per allineare il menu a tendina */
+}
+
+.nav-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    gap: 20px; /* Spazio tra i link */
+}
+
+.nav-link {
+    font-weight: 400;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* Stile speciale per il pulsante di logout per farlo risaltare */
+.btn-logout {
+    border: 1px solid var(--primary-color);
+}
+.btn-logout:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+
+/* ==============================================
+   Animazioni e Classi di Utilità
+   ==============================================
+*/
+
+/* Classe per nascondere elementi (usata da JS per la navbar dinamica) */
+.hidden {
+    display: none !important;
+}
+
+/*
+   Animazione di fade-in per il contenuto principale.
+   Definiamo un'animazione chiamata 'fadeIn' che porta l'opacità da 0 a 1.
+*/
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Applichiamo l'animazione al nostro contenitore 'main-content' */
+#main-content {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* ==============================================
+   Stili per Form (Login, Registrazione)
+   ==============================================
+*/
+.form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 0;
+}
+
+.form-box {
+    background-color: var(--bg-dark-secondary);
+    padding: 30px 40px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 450px;
+    text-align: center;
+}
+
+.form-box h2 {
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.form-group select:disabled {
+    background-color: #2a2a2a; 
+    color: var(--text-secondary);
+    opacity: 0.6; 
+    cursor: not-allowed;
+}
+
+.btn-form {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--primary-color);
+    color: white;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-form:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.form-switch {
+    margin-top: 20px;
+    color: var(--text-secondary);
+}
+
+.form-error, .form-success {
+    padding: 12px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    width: 100%;
+    text-align: center;
+}
+
+.form-error {
+    background-color: #4a1c24;
+    color: #f8d7da;
+    border: 1px solid #f5c6cb;
+}
+
+.form-success {
+    background-color: #155724;
+    color: #d4edda;
+    border: 1px solid #c3e6cb;
+}
+
+
+/* ==============================================
+   Stili per la Homepage (index.html)
+   ==============================================
+*/
+.hero-section {
+    text-align: center;
+    padding: 60px 20px;
+}
+.hero-section h1 {
+    font-size: 2.8rem;
+    margin-bottom: 1rem;
+}
+.hero-section .subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto 40px auto;
+}
+
+#chat-container {
+    max-width: 700px;
+    margin: 0 auto;
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+#chat-window {
+    height: 350px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-message {
+    padding: 10px 15px;
+    border-radius: 18px;
+    max-width: 85%;
+    line-height: 1.4;
+}
+.chat-message p {
+    margin: 0;
+}
+.user-message {
+    background-color: var(--primary-color);
+    color: white;
+    align-self: flex-end;
+    border-bottom-right-radius: 4px;
+}
+.assistant-message {
+    background-color: #333;
+    color: var(--text-primary);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    text-align: left !important;
+}
+
+.assistant-message p {
+    text-align: left !important;
+    margin: 0;
+}
+
+/* ==============================================
+   Stili per Typing Indicator nella Chat
+   ==============================================
+*/
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    border-radius: 18px;
+    max-width: 85%;
+    background-color: #333;
+    color: var(--text-primary);
+    align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 4px;
+}
+
+.typing-dots span {
+    height: 8px;
+    width: 8px;
+    background-color: #999;
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-10px);
+        opacity: 1;
+    }
+}
+
+/* ==============================================
+   Stili per pulsante di prenotazione specialisti (da index.html)
+   ==============================================
+*/
+.specialist-booking-container {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.specialist-booking-btn {
+    background-color: #28a745; /* Success green */
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: normal;
+    max-width: 200px;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+.specialist-booking-btn:hover {
+    background-color: #218838; /* Darker green on hover */
+}
+
+#geo-status {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    min-height: 1.2em;
+}
+
+#chat-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#chatInput {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    resize: none;
+    font-family: 'Poppins', sans-serif;
+}
+#chat-form button, #chat-window .quick-action-btn {
+    padding: 10px 20px;
+    border-radius: 20px;
+    border: none;
+    background-color: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    font-weight: normal;
+    box-sizing: border-box;
+}
+#chat-form button:hover, #chat-window .quick-action-btn:hover {
+    background-color: var(--primary-color-hover);
+}
+
+/* Reset button - sized to match Invia button */
+#reset-chat-btn {
+    width: auto;
+    min-width: 60px;
+    padding: 10px 15px; /* Leggermente meno padding per compensare il testo più lungo */
+}
+
+.chat-disclaimer {
+    text-align: center;
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.features-section {
+    display: flex;
+    gap: 30px;
+    padding: 60px 20px;
+    justify-content: center;
+}
+
+.feature-card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 400px;
+    text-align: center;
+}
+.feature-card h2 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+.feature-card p {
+    color: var(--text-secondary);
+    margin-bottom: 25px;
+}
+.btn-feature {
+    display: inline-block;
+    padding: 10px 20px;
+    border-radius: 5px;
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+.btn-feature:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+/* ==============================================
+   Stili per Dashboard e Profili
+   ==============================================
+*/
+.page-header {
+    padding: 30px 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 30px;
+}
+.page-header h1 {
+    font-size: 2.5rem;
+}
+.page-header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 30px;
+}
+
+/* Layout a due colonne per pagine come "Gestione Disponibilità" */
+@media (min-width: 768px) {
+    .grid-2-cols {
+        grid-template-columns: 1fr 2fr;
+    }
+}
+
+.card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 25px;
+}
+.card h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Stili per le card degli appuntamenti */
+.appuntamento-card {
+    background-color: #2a2a3e;
+    border: 1px solid #444;
+    border-left: 5px solid var(--primary-color);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: transform 0.2s ease;
+}
+.appuntamento-card:hover {
+    transform: translateY(-3px);
+}
+.appuntamento-card h3 {
+    margin: 0 0 10px;
+}
+.appuntamento-card p {
+    margin: 5px 0;
+    color: var(--text-secondary);
+}
+.appuntamento-card strong {
+    color: var(--text-primary);
+}
+
+/* Colori specifici per lo stato dell'appuntamento */
+.appuntamento-card.completato {
+    border-left-color: #28a745; /* Verde */
+}
+.appuntamento-card.cancellato {
+    border-left-color: #6c757d; /* Grigio */
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Stili per i pulsanti di azione nelle card */
+.actions button {
+    margin-right: 10px;
+    padding: 6px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    background-color: #333;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+.actions button:hover {
+    filter: brightness(1.2);
+}
+.actions button:disabled {
+    background-color: #444;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.actions .btn-review {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+.actions .btn-cancel {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+.actions .btn-complete {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* Stili per il modale della recensione */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 2000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+    animation: fadeIn 0.3s;
+}
+
+.modal-content {
+    background-color: var(--bg-dark-secondary);
+    margin: 15% auto;
+    padding: 30px;
+    border: 1px solid var(--border-color);
+    width: 90%;
+    max-width: 500px;
+    border-radius: 8px;
+    position: relative;
+}
+
+.modal.is-centered {
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.is-centered[style*="display: flex"] {
+    display: flex;
+}
+
+.modal.is-centered .modal-content {
+    margin: 20px; /* Rimuove il margine superiore e garantisce spazio sui lati */
+}
+
+.close-button {
+    color: #aaa;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.star-rating {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: center;
+    gap: 5px;
+}
+.star-rating input[type="radio"] { display: none; }
+.star-rating label { font-size: 2.5em; color: #444; cursor: pointer; transition: color 0.2s; }
+.star-rating input[type="radio"]:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label { color: #f90; }
+
+#review-form textarea {
+    width: 100%;
+    min-height: 80px;
+    margin-top: 15px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 4px;
+}
+#review-form button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 10px;
+}
+
+/* ==============================================
+   Stili per Lista e Profilo Medici
+   ==============================================
+*/
+.medici-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+}
+
+.medico-card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.medico-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 123, 255, 0.1);
+}
+.medico-card h2 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+.medico-card .specializzazione {
+    font-style: italic;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+.medico-card .punteggio {
+    font-weight: bold;
+    color: #28a745; /* Verde */
+}
+.medico-card .distanza {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
+
+/* Stili per la pagina del profilo singolo */
+.profilo-medico-grid {
+    display: grid;
+    gap: 30px;
+}
+@media (min-width: 992px) {
+    .profilo-medico-grid {
+        grid-template-columns: 2fr 1fr;
+    }
+}
+.info-medico p {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    color: var(--text-secondary);
+}
+.info-medico strong {
+    color: var(--text-primary);
+}
+
+#disponibilita-lista {
+    list-style: none;
+    padding: 0;
+    max-height: 450px;
+    overflow-y: auto;
+}
+#disponibilita-lista li {
+    background-color: #2a2a3e;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    padding: 12px;
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+#disponibilita-lista li:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+#disponibilita-lista li.disabled {
+    background-color: #333;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+#notifica {
+    padding: 15px;
+    border-radius: 5px;
+    margin-top: 20px;
+    text-align: center;
+    font-size: 1.1em;
+}
+#notifica.success { background-color: #155724; color: #d4edda; }
+#notifica.error { background-color: #721c24; color: #f8d7da; }
+
+/* ==============================================
+   Stili per Pagina Recensioni Medico
+   ==============================================
+*/
+.recensione-card {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.recensione-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.star-rating-display .star {
+    font-size: 1.2rem;
+    color: #444; /* Stella vuota */
+}
+
+.star-rating-display .star.filled {
+    color: #f90; /* Stella piena */
+}
+
+.data-recensione {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.recensione-body p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+
+/* ==============================================
+   Stili per il Sistema di Notifiche Personalizzato
+   ==============================================
+*/
+.notifier-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000; /* Assicura che sia sopra tutto il resto */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.notifier-overlay:not(.hidden) {
+    opacity: 1;
+}
+
+.notifier-box {
+    background-color: var(--bg-dark-secondary);
+    padding: 30px 40px;
+    border-radius: 8px;
+    border-top: 4px solid var(--primary-color);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+    width: 90%;
+    max-width: 450px;
+    text-align: center;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+}
+.notifier-overlay:not(.hidden) .notifier-box {
+    transform: scale(1);
+}
+
+#salus-notifier-title {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+}
+
+#salus-notifier-message {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.notifier-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.notifier-buttons button {
+    padding: 10px 25px;
+    border-radius: 5px;
+    border: none;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    min-width: 100px;
+}
+
+.notifier-btn-confirm {
+    background-color: var(--primary-color);
+    color: white;
+}
+.notifier-btn-confirm:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.notifier-btn-cancel {
+    background-color: #555;
+    color: var(--text-primary);
+}
+.notifier-btn-cancel:hover {
+    background-color: #777;
+}
+
+/* ==============================================
+   Stili per il Modale di Prenotazione
+   ==============================================
+*/
+#booking-modal-details {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+}
+
+#booking-form textarea {
+    width: 100%;
+    min-height: 80px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px;
+    border-radius: 4px;
+    font-family: 'Poppins', sans-serif;
+    resize: vertical;
+}
+
+#booking-form button {
+    margin-top: 15px;
+    width: 100%;
+}
+
+/* ==============================================
+   Stili per il Logo nella Navbar
+   ==============================================
+*/
+.nav-logo {
+    display: flex;
+    align-items: center; /* Allinea verticalmente icona e testo */
+    gap: 10px; /* Aggiunge un po' di spazio tra icona e testo */
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.nav-logo-icon {
+    height: 35px; /* Definiamo l'altezza dell'icona */
+    width: auto;  /* La larghezza si adatterà in proporzione */
+}
+
+/* ==============================================
+   Stili per Filtri Pagina Lista Medici
+   ==============================================
+*/
+.filters-container {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+    padding: 20px;
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    flex-wrap: wrap; /* Permette ai filtri di andare a capo su schermi piccoli */
+}
+
+.filter-group {
+    flex-grow: 1; /* Fa in modo che i gruppi di filtri occupino lo spazio disponibile */
+    min-width: 250px; /* Larghezza minima prima di andare a capo */
+}
+
+.filter-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Stili per il contenitore dell'autocomplete, riutilizzati da signup-medico */
+.autocomplete-container {
+    position: relative;
+}
+
+.autocomplete-items {
+    position: absolute;
+    border: 1px solid var(--border-color);
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-dark-primary);
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.autocomplete-items div,
+.autocomplete-suggestion {
+    padding: 10px;
+    cursor: pointer;
+    background-color: var(--bg-dark-secondary);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.autocomplete-items div:hover,
+.autocomplete-suggestion:hover {
+    background-color: gray;
+    color: white;
+}
+
+/* ==============================================
+   Stili per Pagina Mappa Medici
+   ==============================================
+*/
+.map-page-container {
+    display: grid;
+    grid-template-columns: 1fr; /* Layout a colonna singola per mobile */
+    gap: 20px;
+    margin-top: 20px;
+}
+
+/* Layout a due colonne per schermi più grandi */
+@media (min-width: 992px) {
+    .map-page-container {
+        grid-template-columns: 400px 1fr; /* Sidebar fissa, mappa flessibile */
+        height: 70vh; /* Altezza relativa alla viewport */
+    }
+}
+
+.map-sidebar {
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.map-controls {
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.map-controls .btn-form {
+    width: 100%;
+    margin-top: 10px;
+}
+
+.map-controls .btn-form.secondary {
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+}
+.map-controls .btn-form.secondary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#results-list-container {
+    flex-grow: 1; /* Occupa lo spazio rimanente nella sidebar */
+    overflow-y: auto; /* Aggiunge lo scroll se i risultati sono troppi */
+    margin-top: 20px;
+}
+
+#results-status {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+#results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doctor-list-item {
+    padding: 15px;
+    border: 1px solid transparent;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-left-color 0.2s ease;
+}
+
+.doctor-list-item:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    border-left: 3px solid var(--primary-color);
+}
+
+.doctor-list-item h4 {
+    margin: 0 0 5px;
+    color: var(--text-primary);
+}
+.doctor-list-item p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.doctor-list-item p.address {
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.map-container {
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    min-height: 400px; /* Altezza minima su mobile */
+    width: 100%;
+    height: 100%;
+}
+
+/* ==============================================
+   Stili per Pulsante Mostra/Nascondi Password
+   ==============================================
+*/
+.password-container {
+    position: relative;
+}
+
+.password-toggle-icon {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--text-secondary); /* Colore grigio per l'icona */
+    transition: color 0.2s ease;
+}
+
+.password-toggle-icon:hover {
+    color: var(--primary-color); /* Colore primario al passaggio del mouse */
+}
+
+/* Regola lo spazio a destra nell'input per non sovrapporre il testo all'icona */
+.password-container input {
+    padding-right: 45px !important;
+}
+
+/* ==============================================
+   Stili per Actions Container e Modal
+   ============================================== */
+
+.actions-container {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+    justify-content: center;
+}
+
+.action-btn {
+    flex: 1;
+    max-width: 200px;
+    position: relative;
+    font-weight: 600;
+}
+
+.action-.secondary {
+    background-color: #555;
+    color: var(--text-primary);
+}
+
+.action-btn.secondary:hover {
+    background-color: #666;
+}
+
+.filter-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc3545;
+    color: white;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+}
+
+/* Modal Headers e Footer */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.modal-footer .btn-form {
+    width: auto;
+    min-width: 120px;
+}
+
+/* Modal Large per la Mappa */
+.modal-large {
+    max-width: 90%;
+    width: 1200px;
+    margin: 5% auto;
+}
+
+/* Container Mappa Modal */
+.map-modal-container {
+    display: flex;
+    height: 600px;
+    gap: 20px;
+}
+
+.map-modal-sidebar {
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+#modal-map {
+    flex: 1;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.map-modal-sidebar .map-controls {
+    background-color: var(--bg-dark-primary);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+#modal-results-list-container {
+    flex: 1;
+    background-color: var(--bg-dark-primary);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+#modal-results-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#modal-results-status {
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+/* Responsive per Modal */
+@media (max-width: 768px) {
+    .actions-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-large {
+        width: 95%;
+        margin: 2% auto;
+    }
+    
+    .map-modal-container {
+        flex-direction: column;
+        height: auto;
+    }
+    
+    .map-modal-sidebar {
+        width: 100%;
+    }
+    
+    #modal-map {
+        height: 400px;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-footer .btn-form {
+        width: 100%;
+    }
+}
+
+/* ==============================================
+   Stili per Bottoni di Azione Rapida nella Chat
+   ============================================== */
+
+.quick-actions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0;
+    text-align: center;
+}
+
+.quick-actions-text {
+    margin: 0 0 10px 0;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.quick-actions-container .quick-action-btn {
+    max-width: 250px;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+/* ==============================================
+   Stili per Sezione Booking Homepage - FLEX OPTIMIZED
+   ============================================== */
+
+.booking-section {
+    text-align: center;
+    padding: 25px 20px;
+    margin: 20px auto;
+    background-color: var(--bg-dark-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-width: 700px; /* Stessa larghezza del chat-container */
+}
+
+.booking-section h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 30px;
+}
+
+.booking-form-container {
+    display: flex;
+    gap: 20px; /* Spazio uniforme tra tutti i componenti */
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 900px; /* Più largo per sfruttare lo spazio */
+    margin: 0 auto;
+}
+
+.booking-input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Input groups (specializzazione e città) - più larghi */
+.booking-input-group:not(:last-child) {
+    flex: 2; /* Prende 2 parti dello spazio disponibile */
+    min-width: 0; /* Permette shrinking se necessario */
+}
+
+/* Gruppo del bottone - più piccolo ma proporzionato */
+.booking-input-group:last-child {
+    flex: 1; /* Prende 1 parte dello spazio disponibile */
+    justify-content: flex-end;
+    align-items: flex-end;
+    min-width: 0;
+}
+
+.booking-input-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.booking-input {
+    padding: 12px 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-dark-primary);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.booking-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+.booking-search-btn {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    height: fit-content;
+    width: 100%; /* Occupa tutto lo spazio del suo container */
+    max-width: 120px; /* Limite massimo per non diventare troppo largo */
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+
+/* Stili specifici per autocomplete nella sezione booking */
+.booking-section .autocomplete-items {
+    max-height: 250px;
+    overflow-y: auto;
+    border-radius: 0 0 6px 6px;
+    /* Assicura che lo scrolling funzioni sempre */
+    overflow-x: hidden;
+    scrollbar-width: thin;
+}
+
+.booking-section .autocomplete-items div {
+    padding: 12px 15px;
+    font-size: 0.95rem;
+}
+
+.booking-section .autocomplete-items .show-all-option {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    border-top: 1px solid var(--border-color);
+}
+
+.booking-section .autocomplete-items .show-all-option:hover {
+    background-color: var(--primary-color-hover);
+}
+
+.booking-section .autocomplete-items .near-me-option {
+    background-color: #2a5d31;
+    color: #d4edda;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.booking-section .autocomplete-items .near-me-option:hover {
+    background-color: #1e4620;
+}
+
+/* Classe aggiuntiva per forzare lo scrolling quando si visualizzano tutte le specializzazioni */
+.booking-section .autocomplete-items.show-all-active {
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: block !important;
+}
+
+/* Responsive per la sezione booking */
+@media (max-width: 768px) {
+    .booking-form-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .booking-input-group {
+        min-width: unset;
+        max-width: unset;
+    }
+    
+    .booking-section {
+        margin: 40px 10px;
+        padding: 30px 15px;
+    }
+    
+    .booking-section h2 {
+        font-size: 1.7rem;
+    }
+}
+
+/* ==============================================
+   Stili per Modal Chat AI
+   ==============================================
+*/
+#ai-chat-modal .modal-content {
+    max-width: 700px;
+    width: 90%;
+}
+
+#ai-chat-modal #chat-container {
+    max-width: none;
+    margin: 0;
+    background-color: transparent;
+    border: none;
+    padding: 0;
+}
+
+#ai-chat-modal #chat-window {
+    height: 400px;
+    background-color: var(--bg-dark-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+/* Stile per il bottone "Parla con l'AI" */
+#open-ai-chat-btn {
+    transition: all 0.3s ease;
+}
+
+#open-ai-chat-btn:hover {
+    background-color: #218838 !important;
+    transform: translateY(-2px);
+}
+
+/* ==============================================
+   Stili per Hamburger Menu (Responsive)
+   ==============================================
+*/
+.nav-toggle {
+    display: none; /* Nascosto di default su schermi grandi */
+    cursor: pointer;
+    flex-direction: column;
+    gap: 5px; /* Spazio tra le linee */
+    z-index: 1100; /* Per stare sopra il menu */
+}
+
+.nav-toggle span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background-color: var(--text-primary);
+    border-radius: 2px;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Stili per schermi piccoli (es. smartphone) */
+@media screen and (max-width: 768px) {
+    .nav-toggle {
+        display: flex; /* Mostra il bottone hamburger */
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 60px; /* Allineato sotto la navbar */
+        right: 0;
+        width: 100%;
+        background-color: var(--bg-dark-secondary);
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        max-height: 0; /* Il menu è "chiuso" di default */
+        overflow: hidden;
+        transition: max-height 0.4s ease-in-out, padding 0.2s ease-in-out;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    /* Classe JS per mostrare il menu */
+    .nav-menu.show-menu {
+        max-height: 500px; /* Altezza sufficiente a mostrare tutti i link */
+        padding: 20px 0; /* Aggiunge spazio interno quando aperto */
+    }
+
+    .nav-item {
+        width: 100%;
+        text-align: center;
+    }
+
+    .nav-link {
+        display: block;
+        padding: 15px 0;
+        width: 100%;
+    }
+    
+    .nav-link:hover {
+        background-color: var(--primary-color);
+        color: white;
+    }
+
+    /* Animazione per l'icona hamburger (da 3 linee a "X") */
+    .nav-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(5px, 5px);
+    }
+    .nav-toggle.active span:nth-child(2) {
+        opacity: 0;
+    }
+    .nav-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(7px, -7px);
+    }
+}
+

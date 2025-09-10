@@ -1,0 +1,420 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}MediClick - Trova e Prenota il Tuo Specialista{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <h1>Trova e Prenota il Tuo Specialista</h1>
+    <p class="subtitle">✓ Specialisti verificati ✓ Geolocalizzazione ✓ Prenotazione rapida. La piattaforma che connette pazienti e medici nella tua zona.</p>
+</section>
+
+<section class="booking-section">
+    <div class="booking-form-container">
+        <div class="booking-input-group">
+            <label for="spec-booking-search">Specializzazione</label>
+            <div class="autocomplete-container">
+                <input type="text" id="spec-booking-search" placeholder="Cerca specializzazione..." autocomplete="off" class="form-control booking-input">
+                <div class="autocomplete-items" id="spec-booking-suggestions"></div>
+            </div>
+        </div>
+        
+        <div class="booking-input-group">
+            <label for="location-booking-search">Città o Indirizzo</label>
+            <div class="autocomplete-container">
+                <input type="text" id="location-booking-search" placeholder="Cerca posizione..." autocomplete="off" class="form-control booking-input">
+                <div class="autocomplete-items" id="location-booking-suggestions"></div>
+            </div>
+        </div>
+        
+        <div class="booking-input-group">
+            <button id="search-booking-btn" class="btn-form booking-search-btn">Cerca</button>
+        </div>
+    </div>
+</section>
+
+<section class="booking-section">
+    <h2 style="text-align: center; font-size: 1.5rem; margin-bottom: 20px;">Non sai a quale medico rivolgerti?</h2>
+    <div style="text-align: center;">
+        <button id="open-ai-chat-btn" class="btn-form" style="background-color: #28a745; max-width: 200px;">
+            🤖 Chiedi all'AI
+        </button>
+    </div>
+</section>
+
+<!-- Modal per la Chat AI -->
+<div id="ai-chat-modal" class="modal is-centered">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>MediClick AI - Assistente Virtuale</h3>
+            <span class="close-button" id="close-ai-chat">&times;</span>
+        </div>
+        
+        <div id="chat-container">
+            <div id="chat-window">
+                <div class="chat-message assistant-message">
+                    <p>Ciao! Sono MediClick AI e sono qui per aiutarti.</p>
+                </div>
+            </div>
+            <div id="auth-required-message" style="display: none;">
+                <p>Per utilizzare la chat, è necessario essere registrati. <a href="/pagina-login">Accedi</a> o <a href="/pagina-registrazione-paziente">Registrati come Paziente</a></p>
+            </div>
+            <form id="chat-form">
+                <textarea id="chatInput" placeholder="Es. 'Ho un forte mal di schiena da alcuni giorni...'" rows="1"></textarea>
+                <button type="submit" id="chat-submit-btn" aria-label="Invia messaggio">Invia</button>
+                <button type="button" id="reset-chat-btn" style="display: none;">Restart</button>
+            </form>
+            <div class="chat-disclaimer">
+                <small>MediClick AI può fare errori e non si sostituisce ad un medico.</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="features-section">
+    <div class="feature-card">
+        <h2>Per il Paziente</h2>
+        <p>Trova rapidamente lo specialista più adatto, prenota una visita in pochi click e gestisci i tuoi appuntamenti. Tutto in un unico posto.</p>
+        <a href="/pagina-registrazione-paziente" class="btn-feature">Registrati Ora</a>
+    </div>
+    <div class="feature-card">
+        <h2>Per il Medico</h2>
+        <p>Entra a far parte del nostro network, gestisci le tue disponibilità in modo semplice e raggiungi nuovi pazienti ogni giorno.</p>
+        <a href="/pagina-registrazione-medico" class="btn-feature">Unisciti a Noi</a>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // TypingIndicator è definito in main.js - usa quello globale
+
+    // Gestione modal AI chat
+    const aiChatModal = document.getElementById('ai-chat-modal');
+    const openAiChatBtn = document.getElementById('open-ai-chat-btn');
+    const closeAiChatBtn = document.getElementById('close-ai-chat');
+
+    // Nascondi il modal all'avvio
+    aiChatModal.style.display = 'none';
+
+    // Apri modal
+    openAiChatBtn.addEventListener('click', () => {
+        aiChatModal.style.display = 'flex';
+        // Focus sull'input quando si apre il modal
+        setTimeout(() => {
+            if (!chatInput.disabled) {
+                chatInput.focus();
+            }
+        }, 100);
+    });
+
+    // Chiudi modal
+    closeAiChatBtn.addEventListener('click', () => {
+        aiChatModal.style.display = 'none';
+    });
+
+    // Chiudi modal cliccando fuori
+    aiChatModal.addEventListener('click', (e) => {
+        if (e.target === aiChatModal) {
+            aiChatModal.style.display = 'none';
+        }
+    });
+
+    // Chiudi modal con ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && aiChatModal.style.display === 'flex') {
+            aiChatModal.style.display = 'none';
+        }
+    });
+
+    // Tutta la logica JavaScript per la chat
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chatInput');
+    const chatWindow = document.getElementById('chat-window');
+    const authRequiredMessage = document.getElementById('auth-required-message');
+    const resetChatBtn = document.getElementById('reset-chat-btn');
+    let userLocation = null;
+    window.userLocation = null; // Rendi accessibile globalmente
+    let isUserAuthenticated = false;
+    let sessionId = localStorage.getItem('chat_session_id'); // Recupera da localStorage
+
+    // Elementi per la sezione booking
+    const specBookingSearch = document.getElementById('spec-booking-search');
+    const specBookingSuggestions = document.getElementById('spec-booking-suggestions');
+    const locationBookingSearch = document.getElementById('location-booking-search');
+    const locationBookingSuggestions = document.getElementById('location-booking-suggestions');
+    const searchBookingBtn = document.getElementById('search-booking-btn');
+    
+    // Dati per autocomplete
+    let allSpecializations = [];
+    let selectedSpecId = null;
+    let selectedLocation = null;
+    let selectedLocationCoords = null;
+    let debounceTimer;
+
+    // --- INIZIO MODIFICA: Rimuoviamo la lista statica delle città ---
+    // const italianRegionalCapitals = [ ... ]; // RIMOSSO
+    // --- FINE MODIFICA ---
+
+    function generateSessionId() {
+        const newId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('chat_session_id', newId);
+        return newId;
+    }
+
+    function checkAuthenticationAndInitializeChat() {
+        isUserAuthenticated = true; 
+        if (!sessionId) {
+            sessionId = generateSessionId();
+        }
+        chatInput.disabled = false;
+        chatInput.placeholder = "Es. 'Ho un forte mal di schiena da alcuni giorni...'";
+        document.getElementById('chat-submit-btn').disabled = false;
+        const welcomeMessage = chatWindow.querySelector('.assistant-message p');
+        welcomeMessage.innerHTML = 'Ciao! Sono MediClick AI e sono qui per aiutarti.';
+        showQuickActionButtons();
+        authRequiredMessage.style.display = 'none';
+        resetChatBtn.style.display = 'block';
+    }
+
+    chatInput.addEventListener('focus', () => {});
+    
+    chatInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            chatForm.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
+    });
+
+    chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const userMessage = chatInput.value.trim();
+        if (!userMessage) return;
+        ChatUI.appendMessage(chatWindow, userMessage, 'user', allSpecializations, userLocation, chatInput, resetChatBtn);
+        chatInput.value = '';
+        chatInput.disabled = true;
+        TypingIndicator.show();
+        try {
+            const aiData = await ChatAPI.sendMessage(sessionId, userMessage);
+            if (aiData.content) {
+                ChatUI.appendMessage(chatWindow, aiData.content, 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
+            }
+        } catch (error) {
+            console.error('Chat error:', error);
+            ChatUI.appendMessage(chatWindow, 'Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
+        } finally {
+            setTimeout(() => {
+                TypingIndicator.hide();
+                // Aggiungiamo un piccolo delay per permettere ai pulsanti di essere aggiunti al DOM
+                setTimeout(() => {
+                    const hasBookingButtons = chatWindow.querySelector('.specialist-booking-container');
+                    if (!hasBookingButtons) {
+                        chatInput.disabled = false;
+                        chatInput.focus();
+                    }
+                }, 100);
+            }, 500);
+        }
+    });
+
+    // appendMessage centralizzato: usa ChatUI.appendMessage(...)
+
+    resetChatBtn.addEventListener('click', async () => {
+        chatWindow.innerHTML = '';
+        const welcomeMessageHTML = `<div class="chat-message assistant-message"><p>Ciao! Sono MediClick AI e sono qui per aiutarti.</p></div>`;
+        chatWindow.innerHTML = welcomeMessageHTML;
+        showQuickActionButtons();
+        try {
+            const resetSuccess = await ChatAPI.resetSession(sessionId);
+            if (resetSuccess) {
+                sessionId = generateSessionId();
+            }
+        } catch (error) {
+            console.error('Chat reset error:', error);
+        }
+        chatInput.focus();
+    });
+
+    // FUNZIONI PER LA SEZIONE BOOKING
+
+    async function loadSpecializations() {
+        try {
+            const response = await fetch('/api/specializzazioni');
+            allSpecializations = await response.json();
+        } catch (error) {
+            console.error('Errore nel caricamento delle specializzazioni:', error);
+        }
+    }
+
+    // Autocomplete Specializzazione centralizzato
+    initSimpleAutocomplete(
+        'spec-booking-search',
+        'spec-booking-suggestions',
+        () => allSpecializations,
+        (spec) => { selectedSpecId = spec.id; },
+        (spec) => spec.nome,
+        0,
+        300
+    );
+
+    // Autocomplete Indirizzo centralizzato con renderer personalizzato (aggiunge "Vicino a me")
+    initAddressAutocomplete(
+        'location-booking-search',
+        'location-booking-suggestions',
+        (addr) => {
+            selectedLocation = addr.display_address;
+            selectedLocationCoords = { lat: addr.lat, lon: addr.lon };
+        },
+        3,
+        300,
+        (suggestions, container, input, onSelect) => {
+            container.innerHTML = '';
+            // near me option se disponibile - sempre in cima ai suggerimenti
+            if (userLocation || window.userLocation) {
+                const currentLocation = userLocation || window.userLocation;
+                const nearMeDiv = document.createElement('div');
+                nearMeDiv.textContent = '📍 Vicino a me';
+                nearMeDiv.className = 'near-me-option';
+                nearMeDiv.addEventListener('click', () => {
+                    input.value = 'Vicino a me';
+                    selectedLocation = 'near_me';
+                    selectedLocationCoords = currentLocation;
+                    container.innerHTML = '';
+                });
+                container.appendChild(nearMeDiv);
+            }
+            // suggerimenti indirizzi
+            suggestions.forEach(s => {
+                const div = document.createElement('div');
+                div.textContent = s.display_address;
+                div.addEventListener('click', () => {
+                    input.value = s.display_address;
+                    // Quando l'utente seleziona un indirizzo specifico, cancella la selezione "near_me"
+                    selectedLocation = s.display_address;
+                    selectedLocationCoords = { lat: s.lat, lon: s.lon };
+                    if (onSelect) onSelect(s);
+                    container.innerHTML = '';
+                });
+                container.appendChild(div);
+            });
+        }
+    );
+
+    searchBookingBtn.addEventListener('click', () => {
+        const params = new URLSearchParams();
+        
+        if (selectedSpecId) {
+            params.append('specializzazione_id', selectedSpecId);
+        } else {
+            const specValue = specBookingSearch.value.trim();
+            if (specValue) {
+                const matchingSpec = allSpecializations.find(spec => spec.nome.toLowerCase() === specValue.toLowerCase());
+                if (matchingSpec) params.append('specializzazione_id', matchingSpec.id);
+            }
+        }
+        
+        // Logica di reindirizzamento aggiornata
+        if (selectedLocation === 'near_me' && selectedLocationCoords) {
+            params.append('lat', selectedLocationCoords.lat);
+            params.append('lon', selectedLocationCoords.lon);
+        } else if (selectedLocation) {
+            // Se è stato selezionato un indirizzo, usiamo le sue coordinate se disponibili
+            if (selectedLocationCoords) {
+                 params.append('lat', selectedLocationCoords.lat);
+                 params.append('lon', selectedLocationCoords.lon);
+            } else {
+                // Altrimenti, usiamo il testo come filtro per la città (fallback)
+                params.append('citta', selectedLocation);
+            }
+        }
+        
+        window.location.href = `/medici?${params.toString()}`;
+    });
+
+    // Reset selezione quando l'utente inizia a digitare
+    locationBookingSearch.addEventListener('input', () => {
+        const inputValue = locationBookingSearch.value.trim();
+        // Se l'utente sta cancellando il contenuto o digitando qualcosa di nuovo, reset della selezione
+        if (inputValue === '' || (inputValue !== 'Vicino a me' && inputValue !== selectedLocation)) {
+            selectedLocation = null;
+            selectedLocationCoords = null;
+        }
+    });
+
+    // Geolocalizzazione lazy alla prima focus del campo posizione  
+    locationBookingSearch.addEventListener('focus', () => {
+        if (!userLocation && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+                window.userLocation = userLocation; // Aggiorna anche la variabile globale
+                // Non selezionare automaticamente, solo rendere disponibile per i suggerimenti
+            }, () => {});
+        }
+    });
+
+    // ... (tutto il resto del codice della chat rimane invariato)
+    
+    function showQuickActionButtons() {
+        if (!isUserAuthenticated) return;
+        const existingButtons = chatWindow.querySelector('.quick-actions-container');
+        if (existingButtons) existingButtons.remove();
+        const quickActionsContainer = document.createElement('div');
+        quickActionsContainer.className = 'quick-actions-container';
+        quickActionsContainer.innerHTML = `<p class="quick-actions-text">Cosa posso fare per te?</p><button class="quick-action-btn" data-message="Non so a quale specialista rivolgermi, mi puoi aiutare?">🩺 Trova Specialista</button>`;
+        chatWindow.appendChild(quickActionsContainer);
+        chatInput.disabled = true;
+        chatInput.placeholder = "Seleziona un'azione o attendi...";
+        document.getElementById('chat-submit-btn').disabled = true;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+    
+    chatWindow.addEventListener('click', async function(e) {
+        if (e.target.classList.contains('quick-action-btn')) {
+            const message = e.target.getAttribute('data-message');
+            const quickActionsContainer = chatWindow.querySelector('.quick-actions-container');
+            if (quickActionsContainer) quickActionsContainer.remove();
+            const existingBookingButtons = chatWindow.querySelectorAll('.specialist-booking-container');
+            existingBookingButtons.forEach(btn => btn.remove());
+            const submitBtn = document.getElementById('chat-submit-btn');
+            ChatHelpers.enableChatInput(chatInput, submitBtn);
+            ChatUI.appendMessage(chatWindow, message, 'user', allSpecializations, userLocation, chatInput, resetChatBtn);
+            chatInput.disabled = true;
+            TypingIndicator.show();
+            try {
+                const aiData = await ChatAPI.sendMessage(sessionId, message);
+                if (aiData.content) ChatUI.appendMessage(chatWindow, aiData.content, 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
+            } catch (error) {
+                console.error('Chat error:', error);
+                ChatUI.appendMessage(chatWindow, 'Spiacente, si è verificato un errore di comunicazione con il server.', 'assistant', allSpecializations, userLocation, chatInput, resetChatBtn);
+            } finally {
+                setTimeout(() => {
+                    TypingIndicator.hide();
+                    // Aggiungiamo un piccolo delay per permettere ai pulsanti di essere aggiunti al DOM
+                    setTimeout(() => {
+                        const hasBookingButtons = chatWindow.querySelector('.specialist-booking-container');
+                        if (!hasBookingButtons) {
+                            chatInput.disabled = false;
+                            chatInput.focus();
+                        }
+                    }, 100);
+                }, 500);
+            }
+        }
+    });
+
+    // Riconoscimento specialista ed estrazione info centralizzati in ChatHelpers (main.js)
+
+    // Inizializza geolocalizzazione all'avvio per una migliore UX
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            userLocation = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            window.userLocation = userLocation;
+        }, (error) => {
+            // Non impostare fallback - "Vicino a me" apparirà solo con geolocalizzazione reale
+            console.log('Geolocalizzazione non disponibile');
+        });
+    }
+
+    checkAuthenticationAndInitializeChat();
+    loadSpecializations();
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Le Mie Recensioni - MediClick{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Le Mie Recensioni</h1>
+    <p>Qui puoi leggere tutte le valutazioni che i pazienti hanno lasciato dopo le loro visite. Per questione di privacy, le 
+        recensioni sono anonime
+    </p>
+    <div class="card" style="margin-top: 20px; text-align: center; padding: 20px; background-color: var(--bg-dark-secondary);">
+        <h2 style="margin-bottom: 10px; color: var(--primary-color);">Punteggio Medio Totale</h2>
+        <p id="punteggio-medio" style="font-size: 2.2rem; font-weight: 700; color: var(--text-primary);">N/D</p>
+    </div>
+</div>
+
+<div id="recensioni-container" class="dashboard-grid" style="margin-top: 30px;">
+    <p>Caricamento recensioni in corso...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        const container = document.getElementById('recensioni-container');
+        const punteggioMedioEl = document.getElementById('punteggio-medio');
+        
+        // Verifica se l'utente è autenticato
+        const token = localStorage.getItem('user_token');
+        if (!token) {
+            container.innerHTML = '<p>Devi effettuare il login come medico per visualizzare le tue recensioni. <a href="/pagina-login">Accedi qui</a></p>';
+            return;
+        }
+        
+        try {
+            // Chiamata all'endpoint del proxy per ottenere le recensioni del medico loggato
+            const responseData = await callApi('/api/valutazioni/medico/me');
+            const recensioni = responseData.valutazioni;
+            const punteggioMedio = responseData.punteggio_medio;
+
+            if (punteggioMedio !== null && recensioni.length > 0) {
+                punteggioMedioEl.textContent = `${punteggioMedio.toFixed(2)} / 5.00`;
+            } else {
+                punteggioMedioEl.textContent = 'N/D';
+            }
+            
+            container.innerHTML = '';
+            if (recensioni.length === 0) {
+                container.innerHTML = '<p>Non hai ancora ricevuto nessuna recensione.</p>';
+                return;
+            }
+
+            recensioni.forEach(recensione => {
+                const card = document.createElement('div');
+                card.className = 'recensione-card';
+                
+                // Creiamo le stelle per il punteggio
+                let stelleHtml = '<div class="star-rating-display">';
+                for (let i = 1; i <= 5; i++) {
+                    stelleHtml += `<span class="star ${i <= recensione.punteggio ? 'filled' : ''}">★</span>`;
+                }
+                stelleHtml += '</div>';
+
+                const commentHtml = recensione.commento ? escapeHtml(recensione.commento) : '<i>Nessun commento lasciato.</i>';
+                card.innerHTML = `
+                    <div class="recensione-header">
+                        ${stelleHtml}
+                        <span class="data-recensione">${new Date(recensione.data_valutazione).toLocaleDateString('it-IT')}</span>
+                    </div>
+                    <div class="recensione-body">
+                        <p>${commentHtml}</p>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error("Impossibile caricare le recensioni:", error);
+            
+            // Gestione specifica per errori di autenticazione
+            if (error.message.includes('Sessione scaduta') || error.message.includes('Not authenticated')) {
+                container.innerHTML = '<p>Devi effettuare il login come medico per visualizzare le tue recensioni. <a href="/pagina-login">Accedi qui</a></p>';
+            } else {
+                container.innerHTML = '<p>Si è verificato un errore durante il caricamento delle recensioni.</p>';
+            }
+        }
+    });
+</script>
+{% endblock %}

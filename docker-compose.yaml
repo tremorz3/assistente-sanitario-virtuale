@@ -1,0 +1,79 @@
+services:
+  db:
+    image: mariadb:10.6
+    container_name: mariadb_container
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_USER: root
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: HADB
+      MYSQL_USER: user
+      MYSQL_PASSWORD: pwd
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mariadb_data:/var/lib/mysql
+      - ./mariadb_init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mariadb", "-h", "localhost", "-uroot", "-prootpassword", "--database=HADB", "--execute=SELECT 1;"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama_container
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c"]
+    # Questo comando personalizzato avvia Ollama e poi scarica i modelli necessari solo se non presenti.
+    command: >
+      "ollama serve & 
+       sleep 5 && 
+       (ollama list | grep -q 'qwen2.5:7b-instruct-q6_K' || ollama pull qwen2.5:7b-instruct-q6_K) && 
+       (ollama list | grep -q 'snowflake-arctic-embed2' || ollama pull snowflake-arctic-embed2) && 
+       wait"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: . # Il contesto di build è l'intera cartella del progetto
+      dockerfile: backend/Dockerfile # Specifichiamo dove trovare il Dockerfile
+    container_name: backend_api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_USER: user
+      DB_PASSWORD: pwd
+      DB_NAME: HADB
+      OLLAMA_API_URL: http://ollama:11434
+    ports:
+      - "8001:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+
+  # Servizio di frontend (precedentemente ui_server)
+  frontend:
+    build: ./frontend # Punta alla cartella 'frontend'
+    container_name: frontend_ui
+    restart: unless-stopped
+    environment:
+      # L'URL dell'API ora punta al servizio 'backend'
+      API_BASE_URL: http://backend:8001
+    ports:
+      - "8000:8000"
+    depends_on:
+      backend:
+        condition: service_healthy

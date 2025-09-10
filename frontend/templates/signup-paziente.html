@@ -1,0 +1,21 @@
+{% extends "layouts/base.html" %}
+{% from "partials/_form_macros.html" import form_container, show_error, form_field, password_field, submit_button, form_switch_link %}
+
+{% block title %}Registrazione Paziente - MediClick{% endblock %}
+
+{% block content %}
+{% call form_container(action="/pagina-registrazione-paziente", method="post") %}
+    <h2>Crea il Tuo Account Paziente</h2>
+    
+    {{ show_error(error) }}
+    
+    {{ form_field("Nome", "nome", placeholder="Mario", required=True) }}
+    {{ form_field("Cognome", "cognome", placeholder="Rossi", required=True) }}
+    {{ form_field("Numero di Telefono", "telefono", type="tel", placeholder="10 cifre, es. 3331234567", required=True, minlength="10", maxlength="10") }}
+    {{ form_field("Email", "email", type="email", placeholder="mario.rossi@email.com", required=True) }}
+    {{ password_field("Password", "password", placeholder="Minimo 8 caratteri") }}
+    
+    {{ submit_button("Registrati") }}
+    {{ form_switch_link("Sei già registrato?", "/pagina-login", "Accedi") }}
+{% endcall %}
+{% endblock %}

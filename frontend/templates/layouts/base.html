@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MediClick{% endblock %}</title>
+    
+    <link rel="icon" type="image/png" href="{{ url_for('static', path='/img/salus.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    {% include "partials/_navbar.html" %}
+
+    <main id="main-content" class="container">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <div id="salus-notifier-overlay" class="notifier-overlay hidden">
+        <div id="salus-notifier-box" class="notifier-box">
+            <h3 id="salus-notifier-title"></h3>
+            <p id="salus-notifier-message"></p>
+            <div id="salus-notifier-buttons" class="notifier-buttons">
+                </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', path='/js/main.js') }}?v=20250107001"></script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,166 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}La Mia Dashboard - MediClick{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 id="welcome-message">Ciao, ...</h1>
+    <p>Qui puoi visualizzare e gestire tutti i tuoi appuntamenti.</p>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <h2>Appuntamenti Futuri</h2>
+        <div id="appuntamenti-futuri"><p>Caricamento...</p></div>
+    </div>
+    <div class="card">
+        <h2>Appuntamenti Passati</h2>
+        <div id="appuntamenti-passati"><p>Caricamento...</p></div>
+    </div>
+</div>
+
+<div id="review-modal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeReviewModal()">&times;</span>
+        <h2>Lascia una Recensione</h2>
+        <form id="review-form">
+            <input type="hidden" id="review-prenotazione-id" name="prenotazione_id">
+            <p>Valuta la tua visita:</p>
+            <div class="star-rating">
+                <input type="radio" id="star5" name="punteggio" value="5" required/><label for="star5" title="5 stelle">★</label>
+                <input type="radio" id="star4" name="punteggio" value="4" /><label for="star4" title="4 stelle">★</label>
+                <input type="radio" id="star3" name="punteggio" value="3" /><label for="star3" title="3 stelle">★</label>
+                <input type="radio" id="star2" name="punteggio" value="2" /><label for="star2" title="2 stelle">★</label>
+                <input type="radio" id="star1" name="punteggio" value="1" /><label for="star1" title="1 stella">★</label>
+            </div>
+            <textarea name="commento" placeholder="Lascia un commento (opzionale)..." class="form-control"></textarea>
+            <button type="submit" class="btn-form">Invia Recensione</button>
+        </form>
+        <div id="review-error" class="form-error hidden" style="margin-top: 10px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // La logica di caricamento iniziale rimane invariata...
+    window.addEventListener('DOMContentLoaded', async () => {
+        if (!localStorage.getItem('user_token')) {
+            window.location.href = '/pagina-login';
+            return;
+        }
+        
+        try {
+            const userData = await callApi('/me');
+            document.getElementById('welcome-message').textContent = `Ciao, ${userData.nome}!`;
+            
+            const [prenotazioni, valutazioni] = await Promise.all([
+                callApi('/api/prenotazioni/me'),
+                callApi('/api/valutazioni') 
+            ]);
+
+            const prenotazioniValutateIds = new Set(valutazioni.map(v => v.prenotazione_id));
+            
+            const futuriContainer = document.getElementById('appuntamenti-futuri');
+            const passatiContainer = document.getElementById('appuntamenti-passati');
+            futuriContainer.innerHTML = '';
+            passatiContainer.innerHTML = '';
+
+            const adesso = new Date();
+
+            prenotazioni.sort((a, b) => new Date(a.data_ora_inizio) - new Date(b.data_ora_inizio));
+
+            prenotazioni.forEach(p => {
+                const dataVisita = new Date(p.data_ora_inizio);
+                const card = document.createElement('div');
+                card.className = 'appuntamento-card';
+                
+                let actionsHtml = '<div class="actions">';
+                if (p.stato === 'Confermata' && dataVisita > adesso) {
+                    actionsHtml += `<button class="btn-cancel" onclick="handleCancelClick(${p.id})">Cancella</button>`;
+                }
+                if (p.stato === 'Completata') {
+                    if (prenotazioniValutateIds.has(p.id)) {
+                        actionsHtml += `<button class="btn-review" disabled>Recensito</button>`;
+                    } else {
+                        actionsHtml += `<button class="btn-review" onclick="showReviewModal(${p.id})">Lascia Recensione</button>`;
+                    }
+                }
+                actionsHtml += '</div>';
+
+                card.innerHTML = `
+                    <h3>Dr. ${escapeHtml(p.medico_nome)} ${escapeHtml(p.medico_cognome)}</h3>
+                    <p><strong>Data:</strong> ${dataVisita.toLocaleDateString('it-IT', {day: '2-digit', month: 'long', year: 'numeric'})}</p>
+                    <p><strong>Ora:</strong> ${dataVisita.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</p>
+                    <p><strong>Stato:</strong> ${escapeHtml(p.stato)}</p>
+                    ${actionsHtml}
+                `;
+                
+                if (p.stato === 'Completata' || p.stato === 'Cancellata' || (p.stato === 'Confermata' && dataVisita < adesso)) {
+                    if(p.stato === 'Completata') card.classList.add('completato');
+                    if(p.stato === 'Cancellata') card.classList.add('cancellato');
+                    passatiContainer.appendChild(card);
+                } else {
+                    futuriContainer.appendChild(card);
+                }
+            });
+
+            if(futuriContainer.innerHTML === '') futuriContainer.innerHTML = '<p>Nessun appuntamento futuro.</p>';
+            if(passatiContainer.innerHTML === '') passatiContainer.innerHTML = '<p>Nessun appuntamento passato.</p>';
+
+        } catch (error) {
+            SalusNotifier.alert(`Errore nel caricamento della dashboard: ${error.message}`, 'Errore');
+        }
+    });
+
+    // La logica del modale rimane invariata
+    const reviewModal = document.getElementById('review-modal');
+    const reviewForm = document.getElementById('review-form');
+    const reviewErrorDiv = document.getElementById('review-error');
+
+    function showReviewModal(prenotazioneId) {
+        reviewForm.reset();
+        reviewErrorDiv.classList.add('hidden');
+        document.getElementById('review-prenotazione-id').value = prenotazioneId;
+        reviewModal.style.display = 'block';
+    }
+
+    function closeReviewModal() {
+        reviewModal.style.display = 'none';
+    }
+
+    // --- MODIFICA QUI: Sostituzione di alert() ---
+    reviewForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        reviewErrorDiv.classList.add('hidden');
+        const formData = new FormData(reviewForm);
+        const payload = {
+            prenotazione_id: parseInt(formData.get('prenotazione_id')),
+            punteggio: parseInt(formData.get('punteggio')),
+            commento: formData.get('commento')
+        };
+
+        if(!payload.punteggio) {
+            reviewErrorDiv.textContent = 'Per favore, seleziona una valutazione a stelle.';
+            reviewErrorDiv.classList.remove('hidden');
+            return;
+        }
+
+        try {
+            await callApi('/api/valutazioni', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            closeReviewModal();
+            SalusNotifier.alert('Grazie per la tua recensione!', 'Recensione Inviata');
+            setTimeout(() => window.location.reload(), 1500);
+        } catch (error) {
+            reviewErrorDiv.textContent = `Errore: ${error.message}`;
+            reviewErrorDiv.classList.remove('hidden');
+        }
+    });
+
+    // Funzione globale spostata in static/js/main.js: handleCancelClick
+</script>
+{% endblock %}

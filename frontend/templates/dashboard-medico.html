@@ -1,0 +1,101 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}Dashboard Medico - MediClick{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard Medico</h1>
+    <p>Benvenuto/a, <strong>Dr. <span id="user-name">...</span></strong>! Visualizza e gestisci i tuoi appuntamenti.</p>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <h2>Appuntamenti Attivi</h2>
+        <div id="appuntamenti-futuri"><p>Caricamento...</p></div>
+    </div>
+    <div class="card">
+        <h2>Appuntamenti Passati</h2>
+        <div id="appuntamenti-passati"><p>Caricamento...</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.addEventListener('DOMContentLoaded', async () => {
+        if (!localStorage.getItem('user_token')) {
+            window.location.href = '/pagina-login';
+            return;
+        }
+        
+        try {
+            const userData = await callApi('/me');
+            document.getElementById('user-name').textContent = userData.nome;
+
+            const prenotazioni = await callApi('/api/prenotazioni/medico/me');
+            
+            const futuriContainer = document.getElementById('appuntamenti-futuri');
+            const passatiContainer = document.getElementById('appuntamenti-passati');
+            futuriContainer.innerHTML = '';
+            passatiContainer.innerHTML = '';
+
+            // Definiamo la data e ora attuali una sola volta per coerenza
+            const adesso = new Date();
+
+            prenotazioni.sort((a, b) => new Date(a.data_ora_inizio) - new Date(b.data_ora_inizio));
+
+            prenotazioni.forEach(p => {
+                const dataVisita = new Date(p.data_ora_inizio);
+                const card = document.createElement('div');
+                card.className = 'appuntamento-card';
+                
+                let actionsHtml = '<div class="actions">';
+                if (p.stato === 'Confermata') {
+                    // --- INIZIO MODIFICA CHIAVE ---
+                    // 1. Controlliamo se la data della visita è già passata.
+                    const isAppuntamentoPassato = dataVisita < adesso;
+
+                    // 2. Aggiungiamo l'attributo 'disabled' al pulsante se l'appuntamento non è ancora passato.
+                    //    Aggiungiamo anche un 'title' per spiegare all'utente perché il pulsante è disabilitato.
+                    actionsHtml += `<button 
+                                        class="btn-complete" 
+                                        onclick="handleCompleteClick(${p.id})" 
+                                        ${!isAppuntamentoPassato ? 'disabled' : ''}
+                                        title="${!isAppuntamentoPassato ? 'Puoi completare la visita solo dopo il suo orario' : 'Segna la visita come completata'}">
+                                        Segna come Completata
+                                    </button>`;
+                    
+                    actionsHtml += `<button class="btn-cancel" onclick="handleCancelClick(${p.id})">Cancella Visita</button>`;
+                    // --- FINE MODIFICA CHIAVE ---
+                }
+                actionsHtml += '</div>';
+
+                card.innerHTML = `
+                    <h3>Paziente: ${escapeHtml(p.paziente_nome)} ${escapeHtml(p.paziente_cognome)}</h3>
+                    <p><strong>Telefono:</strong> <a href="tel:${sanitizePhone(p.paziente_telefono)}">${escapeHtml(p.paziente_telefono)}</a></p>
+                    <p><strong>Data:</strong> ${dataVisita.toLocaleDateString('it-IT', {day: '2-digit', month: 'long', year: 'numeric'})} - ${dataVisita.toLocaleTimeString('it-IT', {hour: '2-digit', minute: '2-digit'})}</p>
+                    <p><strong>Stato:</strong> ${escapeHtml(p.stato)}</p>
+                    <p><strong>Note Paziente:</strong> <em>${escapeHtml(p.note_paziente || 'Nessuna nota')}</em></p>
+                    ${actionsHtml}
+                `;
+                
+                if (p.stato === 'Completata' || p.stato === 'Cancellata') {
+                    if (p.stato === 'Completata') card.classList.add('completato');
+                    if (p.stato === 'Cancellata') card.classList.add('cancellato');
+                    passatiContainer.prepend(card); 
+                } else {
+                    futuriContainer.appendChild(card);
+                }
+            });
+
+            if(futuriContainer.innerHTML === '') futuriContainer.innerHTML = '<p>Nessun appuntamento da gestire.</p>';
+            if(passatiContainer.innerHTML === '') passatiContainer.innerHTML = '<p>Nessun appuntamento passato.</p>';
+
+        } catch (error) {
+            SalusNotifier.alert(`Errore nel caricamento della dashboard: ${error.message}`, 'Errore');
+        }
+    });
+
+    // Funzioni globali spostate in static/js/main.js: handleCompleteClick, handleCancelClick
+</script>
+{% endblock %}

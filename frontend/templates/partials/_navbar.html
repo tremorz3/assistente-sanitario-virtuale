@@ -1,0 +1,29 @@
+<nav class="navbar">
+    <div class="container nav-container">
+        <a href="/" class="nav-logo">
+            <img src="{{ url_for('static', path='/img/salus.png') }}" alt="MediClick Logo" class="nav-logo-icon">
+            <span>MediClick</span>
+        </a>
+        
+        <div class="nav-toggle" id="nav-toggle">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+        
+        <ul class="nav-menu" id="nav-menu">            
+            <li class="nav-item hidden" id="nav-cerca-medici"><a href="/medici" class="nav-link">I Nostri Medici</a></li>
+            <li class="nav-item" id="nav-login"><a href="/pagina-login" class="nav-link">Accedi</a></li>
+            <li class="nav-item" id="nav-register-paziente"><a href="/pagina-registrazione-paziente" class="nav-link">Registrati</a></li>
+            <li class="nav-item" id="nav-register-medico"><a href="/pagina-registrazione-medico" class="nav-link">Sei un Medico?</a></li>
+            
+            <li class="nav-item hidden" id="nav-profilo-paziente"><a href="/profilo" class="nav-link">I Miei Appuntamenti</a></li>
+            
+            <li class="nav-item hidden" id="nav-dashboard-medico"><a href="/dashboard-medico" class="nav-link">Dashboard</a></li>
+            <li class="nav-item hidden" id="nav-gestione-disponibilita"><a href="/gestione-disponibilita" class="nav-link">Disponibilità</a></li>
+            <li class="nav-item hidden" id="nav-recensioni-medico"><a href="/le-mie-recensioni" class="nav-link">Le Mie Recensioni</a></li>
+
+            <li class="nav-item hidden" id="nav-logout"><a href="#" id="logout-button" class="nav-link btn-logout">Logout</a></li>
+        </ul>
+    </div>
+</nav>

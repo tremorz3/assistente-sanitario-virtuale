@@ -1,0 +1,116 @@
+{# 
+====================================================================================
+Form Macros - Template Riutilizzabili per Eliminare Duplicazione
+====================================================================================
+Questo file contiene macro Jinja2 per centralizzare strutture form comuni
+e eliminare duplicazione HTML nei template di registrazione e login.
+====================================================================================
+#}
+
+{# Macro per container form principale #}
+{% macro form_container(form_class="form-box", action="", method="post", id="") %}
+<div class="form-container">
+    <form class="{{ form_class }}" 
+          {% if id %}id="{{ id }}"{% endif %}
+          {% if action %}action="{{ action }}"{% endif %} 
+          {% if method %}method="{{ method }}"{% endif %}>
+        {{ caller() }}
+    </form>
+</div>
+{% endmacro %}
+
+{# Macro per gestione errori uniformi #}
+{% macro show_error(error_message) %}
+{% if error_message %}
+    <div class="form-error">{{ error_message }}</div>
+{% endif %}
+{% endmacro %}
+
+{# Macro per show success messages #}
+{% macro show_success(success_message) %}
+{% if success_message %}
+    <div class="form-success">{{ success_message }}</div>
+{% endif %}
+{% endmacro %}
+
+{# Macro per campo input standard #}
+{% macro form_field(label, name, type="text", placeholder="", required=False, minlength="", maxlength="", id="") %}
+<div class="form-group">
+    <label for="{{ id or name }}">{{ label }}</label>
+    <input 
+        type="{{ type }}" 
+        id="{{ id or name }}" 
+        name="{{ name }}" 
+        {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+        {% if required %}required{% endif %}
+        {% if minlength %}minlength="{{ minlength }}"{% endif %}
+        {% if maxlength %}maxlength="{{ maxlength }}"{% endif %}
+    >
+</div>
+{% endmacro %}
+
+{# Macro per campo password con toggle #}
+{% macro password_field(label="Password", name="password", placeholder="••••••••", required=True, minlength="8", id="") %}
+<div class="form-group">
+    <label for="{{ id or name }}">{{ label }}</label>
+    <div class="password-container">
+        <input 
+            type="password" 
+            id="{{ id or name }}" 
+            name="{{ name }}" 
+            placeholder="{{ placeholder }}"
+            {% if required %}required{% endif %}
+            {% if minlength %}minlength="{{ minlength }}"{% endif %}
+        >
+        <span class="password-toggle-icon"></span>
+    </div>
+</div>
+{% endmacro %}
+
+{# Macro per campo select/dropdown #}
+{% macro select_field(label, name, options, default_text="Seleziona...", required=False, id="") %}
+<div class="form-group">
+    <label for="{{ id or name }}">{{ label }}</label>
+    <select id="{{ id or name }}" name="{{ name }}" {% if required %}required{% endif %}>
+        <option value="" disabled selected>{{ default_text }}</option>
+        {% for option in options %}
+            <option value="{{ option.id or option.value }}">{{ option.nome or option.text }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+{# Macro per pulsante submit #}
+{% macro submit_button(text="Invia", class="btn-form") %}
+<button type="submit" class="{{ class }}">{{ text }}</button>
+{% endmacro %}
+
+{# Macro per campo autocomplete (per indirizzi) #}
+{% macro autocomplete_field(label, name, placeholder="Digita e seleziona un indirizzo", required=False, id="", hidden_name="") %}
+<div class="form-group">
+    <label for="{{ id or name }}_visual">{{ label }}</label>
+    <div class="autocomplete-container">
+        <input 
+            type="text" 
+            id="{{ id or name }}_visual" 
+            placeholder="{{ placeholder }}" 
+            autocomplete="off" 
+            class="form-control"
+        >
+        <input 
+            type="hidden" 
+            id="{{ id or name }}_hidden" 
+            name="{{ hidden_name or name }}" 
+            {% if required %}required{% endif %}
+        >
+        <div class="autocomplete-items" id="{{ (id or name).replace('_', '-') }}-suggestions"></div>
+    </div>
+</div>
+{% endmacro %}
+
+{# Macro per link di switch (es. "Hai già un account? Accedi") #}
+{% macro form_switch_link(text, url, link_text) %}
+<p class="form-switch">
+    {{ text }} <a href="{{ url }}">{{ link_text }}</a>
+</p>
+{% endmacro %}

@@ -1,0 +1,52 @@
+{% extends "layouts/base.html" %}
+{% from "partials/_form_macros.html" import form_container, show_error, form_field, password_field, submit_button, select_field, autocomplete_field %}
+
+{% block title %}Registrazione Medico - MediClick{% endblock %}
+
+{% block content %}
+{% call form_container(action="/pagina-registrazione-medico", method="post") %}
+    <h2>Diventa un Medico Partner</h2>
+    
+    {{ show_error(error) }}
+    
+    {{ form_field("Nome", "nome", required=True) }}
+    {{ form_field("Cognome", "cognome", required=True) }}
+    {{ form_field("Città", "citta", required=True) }}
+    {{ autocomplete_field("Indirizzo Studio", "indirizzo_studio", required=True) }}
+    {{ form_field("Telefono", "telefono", type="tel", placeholder="10 cifre", required=True, minlength="10", maxlength="10") }}
+    {{ select_field("Specializzazione", "specializzazione_id", specializzazioni, required=True) }}
+    {{ form_field("Ordine di Iscrizione", "ordine_iscrizione", placeholder="Es. Ordine dei Medici di Roma", required=True) }}
+    {{ form_field("Numero di Iscrizione", "numero_iscrizione", required=True) }}
+    {{ form_field("Provincia di Iscrizione", "provincia_iscrizione", placeholder="Es. RM", required=True) }}
+    {{ form_field("Email", "email", type="email", required=True) }}
+    {{ password_field("Password", "password", placeholder="Minimo 8 caratteri") }}
+    
+    {{ submit_button("Registrati come Medico") }}
+{% endcall %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addressInputHidden = document.getElementById('indirizzo_studio_hidden');
+
+        // Inizializza autocomplete usando la funzione centralizzata da main.js
+        initAddressAutocomplete(
+            'indirizzo_studio_visual',
+            'indirizzo-studio-suggestions', 
+            function(suggestion) {
+                // Callback quando si seleziona un suggerimento
+                addressInputHidden.value = suggestion.validation_address;
+            }
+        );
+
+        // Validazione form - assicura che sia selezionato un indirizzo valido
+        document.querySelector('form').addEventListener('submit', function(event) {
+            if (addressInputHidden.value.trim() === '') {
+                event.preventDefault();
+                alert('Per favore, seleziona un indirizzo valido dalla lista dei suggerimenti.');
+            }
+        });
+    });
+</script>
+{% endblock %}

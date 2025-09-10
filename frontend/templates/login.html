@@ -1,0 +1,58 @@
+{% extends "layouts/base.html" %}
+{% from "partials/_form_macros.html" import form_container, show_success, form_field, password_field, submit_button, form_switch_link %}
+
+{% block title %}Login - MediClick{% endblock %}
+
+{% block content %}
+{% call form_container(form_class="form-box", action="", method="post", id="login-form") %}
+    <h2>Accedi al Tuo Account</h2>
+    
+    {{ show_success(success_message) }}
+    <div id="error-message" class="form-error hidden"></div>
+
+    {{ form_field("Email", "email", type="email", placeholder="iltuoindirizzo@email.com", required=True) }}
+    {{ password_field("Password", "password", placeholder="••••••••") }}
+    
+    {{ submit_button("Accedi") }}
+    {{ form_switch_link("Non hai un account?", "/pagina-registrazione-paziente", "Registrati") }}
+{% endcall %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const loginForm = document.getElementById('login-form');
+    const errorMessageDiv = document.getElementById('error-message');
+
+    loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault(); // Impedisce il ricaricamento della pagina
+        errorMessageDiv.classList.add('hidden'); // Nasconde il vecchio errore
+        errorMessageDiv.textContent = '';
+        
+        // Raccoglie i dati dal form e li converte in un oggetto JavaScript
+        const formData = new FormData(loginForm);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            // Esegue la chiamata API usando l'helper centralizzato - con flag isLoginRequest
+            const responseData = await callApi('/pagina-login', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            }, true);
+
+            // callApi gestisce automaticamente gli errori HTTP, quindi arriviamo qui solo in caso di successo
+            localStorage.setItem('user_token', responseData.token.access_token);
+            
+            if (responseData.tipo_utente === 'medico') {
+                window.location.href = '/dashboard-medico';
+            } else {
+                window.location.href = '/profilo';
+            }
+        } catch (error) {
+            // callApi gestisce automaticamente logout per 401, qui gestiamo altri errori
+            console.error('Errore durante il login:', error);
+            errorMessageDiv.textContent = error.message || 'Impossibile connettersi al server. Riprova più tardi.';
+            errorMessageDiv.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}
