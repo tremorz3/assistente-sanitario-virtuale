@@ -1,214 +1,75 @@
 # Assistente Virtuale AI per l'Orientamento Sanitario
 
 ## Descrizione del Progetto
-Questo progetto di tesi mira allo sviluppo di una piattaforma web innovativa: un Assistente Virtuale AI per l'Orientamento Sanitario. L'obiettivo è analizzare i sintomi, fornire indicazioni sanitarie preliminari, indirizzare i pazienti verso lo specialista più adatto, offrire un motore di ricerca geolocalizzato per professionisti sanitari e integrare un sistema di prenotazione e valutazione delle visite.
+Questo progetto di tesi presenta lo sviluppo di una piattaforma web completa: un **Assistente Virtuale AI per l'Orientamento Sanitario**. L'obiettivo principale è fornire agli utenti uno strumento intelligente per l'analisi preliminare dei sintomi, indirizzandoli verso lo specialista medico più appropriato. La piattaforma integra un motore di ricerca geolocalizzato per trovare professionisti sanitari, un sistema di prenotazione delle visite e un meccanismo di valutazione basato sul feedback dei pazienti.
 
 ## Tecnologie Utilizzate
+La piattaforma è costruita su un'architettura a microservizi containerizzata, sfruttando le seguenti tecnologie:
+
 * **Backend:** Python 3.10, FastAPI, MariaDB
-* **Intelligenza Artificiale:** 
-    * Ollama con modello Qwen2.5
-    * LangGraph per orchestrazione agenti AI
-    * LangChain per strumenti RAG
-    * FAISS per vector store e ricerca semantica
-* **Frontend:** HTML5, CSS3, JavaScript ES6+ (con FastAPI per il templating)
-* **Containerizzazione:** Docker, Docker Compose (con supporto GPU)
-* **Sicurezza:** JWT Authentication, input sanitization, XSS prevention
-* **Database:** MariaDB con trigger automatici e gestione transazionale
+* **Intelligenza Artificiale:**
+    * **Modello LLM:** Ollama con `Qwen2.5`
+    * **Orchestrazione Agenti AI:** LangGraph
+    * **Strumenti RAG:** LangChain
+    * **Vector Store:** FAISS per la ricerca semantica
+* **Frontend:** HTML5, CSS3, JavaScript ES6+ (con FastAPI per il rendering dei template)
+* **Containerizzazione:** Docker e Docker Compose (con supporto GPU opzionale)
+* **Database:** MariaDB
 
-## Pattern e Utility Introdotte (Refactor 2025)
+## Panoramica delle Funzionalità
 
-- `backend/src/utils/database_manager.py`
-  - `db_transaction()`: context manager per operazioni in scrittura con commit/rollback automatici.
-  - `db_readonly()`: context manager per query di sola lettura con chiusura risorse automatica.
-  - Helper profilo utente: `get_doctor_profile_id(...)`, `get_patient_profile_id(...)`, `get_user_profile_data(...)`.
+### Backend
+Il backend, costruito con **FastAPI**, espone un set completo di API RESTful per gestire la logica di business dell'applicazione.
 
-- `backend/src/utils/auth.py`
-  - `_load_user_out(user_id)`: recupero profilo centralizzato per `get_current_user` e `get_optional_current_user`.
+* **Gestione Utenti e Autenticazione:** API per la registrazione e il login sicuro di medici e pazienti.
+* **Sistema di Prenotazione e Disponibilità:**
+    * I medici possono definire e gestire i propri slot di disponibilità.
+    * I pazienti possono cercare e prenotare le visite, con aggiornamenti di stato (Confermata, Completata, Cancellata).
+* **Sistema di Valutazione:** I pazienti possono lasciare recensioni e punteggi per le visite completate, contribuendo a un punteggio medio per ogni medico.
+* **Ricerca Geolocalizzata:** API per trovare medici nelle vicinanze, applicando filtri per specializzazione, città e date disponibili.
+* **Integrazione AI:** Un agente conversazionale avanzato, orchestrato da **LangGraph**, analizza i sintomi degli utenti e, tramite un sistema **RAG (Retrieval-Augmented Generation)**, suggerisce lo specialista più idoneo.
 
-- `backend/src/utils/auth_decorators.py`
-  - Dependency: `get_medico_profile_id`, `get_paziente_profile_id` per iniettare automaticamente l'ID profilo.
+### Frontend
+Il frontend è un'applicazione web dinamica che offre un'interfaccia utente intuitiva e funzionale.
 
-- `frontend/templates/static/js/main.js`
-  - `callApi(...)`: wrapper fetch con gestione 401.
-  - `TypingIndicator`, `SalusNotifier`: UI helpers globali.
-  - `escapeHtml(str)`, `sanitizePhone(str)`: sanitizzazione output UI.
-  - Autocomplete:
-    - `initAddressAutocomplete(...)`: suggerimenti indirizzi da backend.
-    - `initSimpleAutocomplete(...)`: autocomplete generico su array in memoria.
-  - Chat:
-    - `ChatHelpers`: riconoscimento specialista, (dis)abilitazione input, pulsante prenotazione.
-    - `ChatAPI`: invio messaggi e reset sessione chat verso backend.
-    - `ChatUI`: rendering messaggi e integrazione con `ChatHelpers`.
+* **Autenticazione Utente:** Pagine dedicate per il login e la registrazione di nuovi account.
+* **Ricerca Medici:** Un'interfaccia di ricerca avanzata con filtri e una mappa interattiva per visualizzare i medici su base geografica.
+* **Chat con AI:** Un'interfaccia di chat per interagire con l'assistente virtuale, ricevere suggerimenti sullo specialista e avviare il processo di prenotazione.
+* **Dashboard Utente:** Aree riservate per medici e pazienti dove è possibile gestire il proprio profilo, le prenotazioni, le disponibilità e le recensioni.
 
-### Esempi d'uso
+## Struttura del Database
+La piattaforma utilizza un database relazionale **MariaDB**, progettato per garantire consistenza e integrità dei dati.
 
-```python
-# backend (router): lettura
-from utils.database_manager import db_readonly
+* **Schema Strutturale:** La struttura include tabelle per la gestione di utenti, profili (medici e pazienti), specializzazioni, disponibilità, prenotazioni e valutazioni. Le relazioni assicurano la coerenza tra le entità.
 
-with db_readonly() as cursor:
-    cursor.execute("SELECT * FROM Specializzazioni ORDER BY nome ASC")
-    specializzazioni = cursor.fetchall()
-```
+    [![Schema del Database](./docs/schema_ER_DB.svg)](./docs/schema_ER_DB.svg)
 
-```python
-# backend (router): transazione con lock
-from utils.database_manager import db_transaction
+* **Script di Inizializzazione (`init.sql`):** Questo script SQL si occupa di:
+    * Creare il database e l'utente con i permessi necessari.
+    * Definire la struttura di tutte le tabelle, inclusi indici e chiavi esterne.
+    * Inserire i dati iniziali, come le specializzazioni mediche.
+    * Impostare `TRIGGER` per l'aggiornamento automatico del punteggio medio dei medici.
+    * Configurare `EVENTI` schedulati per la pulizia periodica dei dati obsoleti.
 
-with db_transaction() as (conn, cursor):
-    cursor.execute("SELECT * FROM Disponibilita WHERE id = ? FOR UPDATE", (id_,))
-    # ... operazioni ...
-```
+* **Script di Seeding (`seeder.py`):** Per facilitare i test e lo sviluppo, è stato creato uno script Python che popola il database con un'ampia quantità di dati fittizi ma realistici, tra cui:
+    * Utenti medici e pazienti generati casualmente.
+    * Medici di test con coordinate geografiche reali per simulare scenari di ricerca geolocalizzata.
+    * Disponibilità, prenotazioni e valutazioni generate in modo coerente.
 
-```html
-<!-- frontend: autocomplete semplice -->
-<input id="spec-booking-search"><div id="spec-booking-suggestions"></div>
-<script>
-  initSimpleAutocomplete(
-    'spec-booking-search',
-    'spec-booking-suggestions',
-    () => allSpecializations,
-    (spec) => { selectedSpecId = spec.id; },
-    (spec) => spec.nome
-  );
-</script>
-```
+## Funzionalità di Sicurezza
+La sicurezza dell'applicazione è stata gestita attraverso l'implementazione di diverse misure:
 
-## Installazione ed Esecuzione
-1.  Clonare il repository.
-2.  Assicurarsi di avere Docker e Docker Compose installati.
-3.  Eseguire il seguente comando dalla cartella principale del progetto:
-    ```bash
-    docker-compose up --build -d
-    ```
-4.  L'applicazione sarà accessibile:
-    * **Frontend UI:** `http://localhost:8000`
-    * **Backend API Docs:** `http://localhost:8001/docs`
+* **Hashing delle Password:** Le password degli utenti non sono mai memorizzate in chiaro. Viene utilizzato l'algoritmo **bcrypt** (`passlib`) per generare un hash sicuro, resistente agli attacchi di forza bruta.
+* **Autenticazione con JWT:** L'accesso alle API protette è gestito tramite **JSON Web Tokens (JWT)**. Dopo un login corretto, il client riceve un token con una scadenza limitata, che deve essere incluso in ogni richiesta successiva come Bearer Token.
+* **Prevenzione XSS (Cross-Site Scripting):** Tutti i dati generati dagli utenti e visualizzati nel frontend vengono sottoposti a sanitizzazione. L'output HTML dinamico viene trattato per codificare i caratteri speciali, impedendo l'iniezione di script dannosi.
+* **Validazione dell'Input:** Sia lato frontend che backend, l'input dell'utente viene validato per garantire che i dati siano nel formato corretto prima di essere elaborati o salvati.
 
-## Stato del Progetto
-**Fase Attuale:** Sviluppo Frontend Avanzato (In Corso)
+## Modello AI e Librerie
+L'intelligenza artificiale è il nucleo dell'esperienza utente per l'orientamento sanitario.
 
-### Backend (Completato ✅)
-Sono state implementate tutte le logiche di base del backend, tra cui:
-* **Architettura Modulare:** Il backend è stato strutturato in `routers` per una maggiore manutenibilità.
-* **Gestione Utenti:** API complete per la registrazione e il login di Medici e Pazienti.
-* **Sistema di Prenotazione:** Ciclo di vita completo per la gestione delle visite:
-    * I medici possono inserire, visualizzare e cancellare le proprie disponibilità.
-    * I pazienti possono prenotare gli slot liberi.
-    * Lo stato di una prenotazione può essere aggiornato (es. a "Completata").
-* **Sistema di Valutazione:** I pazienti possono lasciare una recensione per le visite completate. Il punteggio medio del medico viene ricalcolato automaticamente tramite un `TRIGGER` sul database.
-* **Integrazione AI Avanzata:** 
-    * Orchestratore LangGraph per analisi sintomi intelligente
-    * Strumenti RAG per raccomandazioni specialisti
-    * Memoria conversazionale persistente per ogni utente
-    * Sistema di tool calling per ricerca medici specializzati
-* **Utility:** API per la ricerca di specializzazioni, geocoding e autocomplete degli indirizzi.
-
-### Frontend (In Sviluppo Attivo 🔄)
-**Componenti Implementati:**
-* **Sistema di Autenticazione:** Pagine complete di login, registrazione medici e pazienti
-* **Dashboard Medico:** Interfaccia per visualizzazione e gestione appuntamenti
-* **Profilo Utente:** Pagine di gestione profilo per medici e pazienti
-* **Ricerca Geolocalizzata:** Sistema di ricerca medici con filtri e mappa interattiva
-* **Chat AI:** Interfaccia conversazionale con il chatbot medico integrato
-* **Sistema Prenotazioni:** Modulo interattivo per prenotazione appuntamenti
-* **Gestione Disponibilità:** Interfaccia per medici per gestire i propri slot
-* **Sistema Valutazioni:** Pagine per visualizzare e lasciare recensioni
-
-**Nuove Utility e Helper JS:**
-* **API Communication:** Wrapper `callApi()` con gestione automatica 401/logout
-* **UI Components:** `TypingIndicator`, `SalusNotifier` per notifiche globali
-* **Sicurezza:** `escapeHtml()`, `sanitizePhone()` per prevenire XSS
-* **Autocomplete:** Sistema modulare per suggerimenti indirizzi e specializzazioni
-* **Chat Helpers:** Integrazione completa con backend AI, riconoscimento specialisti, quick actions
-
-### Refactor e Miglioramenti Recenti:
-- **Database Layer:** Context manager `db_transaction()` e `db_readonly()` per gestione connessioni
-- **Auth Decorators:** Dependency injection automatica per profili medici/pazienti
-- **Code Security:** Sanitizzazione completa HTML dinamico nel frontend
-- **Code Reusability:** Helper centralizzati per chat, autocomplete e comunicazione API
-- **Frontend Architecture:** Template modulari con base layout e componenti riutilizzabili
-
-## Linee Guida Contributi
-
-- Uso `db_transaction` vs `db_readonly`:
-  - `db_transaction`: per operazioni che modificano dati (INSERT/UPDATE/DELETE) e per SELECT con lock (es. `FOR UPDATE`). Si occupa di commit/rollback e chiude le risorse.
-  - `db_readonly`: per tutte le SELECT senza side-effect. Non fa commit e chiude sempre le risorse.
-- Recupero profilo utente:
-  - Per ottenere `UserOut` da token, usa sempre `_load_user_out` (già incapsulato in `get_current_user`/`get_optional_current_user`).
-  - Per ottenere `medico_id` o `paziente_id`, preferisci le dependency `get_medico_profile_id`/`get_paziente_profile_id` invece di scrivere query nei router.
-- Router FastAPI:
-  - Evita boilerplate `conn/cursor`; usa i context manager sopra.
-  - Mantieni i lock (`FOR UPDATE`) nelle transazioni quando serve consistenza.
-- Frontend JS:
-  - Evita `innerHTML` con dati utente; usa `escapeHtml` o costruisci il DOM con `textContent`.
-  - Per autocomplete, usa `initAddressAutocomplete` (server-side) o `initSimpleAutocomplete` (client-side array) invece di duplicare logiche.
-  - Per la chat usa `ChatHelpers`, `ChatAPI`, `ChatUI`; non duplicare funzioni nei template.
-
-## QA Checklist (aree rifattorizzate)
-
-- Autenticazione
-  - Login con credenziali corrette restituisce `UserOut` con `token`.
-  - Token scaduto → `callApi` intercetta 401 e forza logout.
-- Prenotazioni
-  - Paziente: creazione prenotazione su slot libero (stato `Confermata`).
-  - Medico: lista prenotazioni personali corretta e ordinata.
-  - Patch stato: `Completata` solo da medico proprietario; `Cancellata` da medico o paziente proprietario; slot liberato quando cancellata.
-  - Concorrenza: prenotazione doppia dello stesso slot rifiutata (lock + check).
-- Valutazioni
-  - Paziente può valutare solo prenotazioni `Completata` e proprie; doppia valutazione bloccata (409).
-  - Medico: lista valutazioni ordinate per data.
-- Ricerca Medici
-  - Lista con filtri (`specializzazione_id`, `citta`, `date_disponibili`, `sort_by`).
-  - Geolocalizzata: `/medici/vicini` e `/medici/vicini-autenticato` rientrano risultati entro raggio; popup mappa coerenti.
-- Frontend UI
-  - Autocomplete specializzazione e indirizzo funzionanti (incluso "📍 Vicino a me").
-  - Chat: invio messaggi, typing indicator, quick action → risposta AI e pulsante "Prenota ora!" quando rilevata specializzazione.
-  - Reset chat: pulizia finestra, rigenerazione `session_id` e riattivazione input.
-  - Sanitizzazione: nessun HTML injectabile in nomi/campi dinamici; numeri `tel:` normalizzati.
-
-## Schema del Database
-Lo schema Entità-Relazione (ER) del database è disponibile nel seguente file:
-
-[![Schema ER del Database](./docs/schema_ER_DB.svg)](./docs/schema_ER_DB.svg)
-
-## Roadmap
-- [x] **Fase 1: Progettazione Architetturale**
-    - [x] Definizione dell'architettura Backend e Frontend.
-    - [x] Progettazione del Database.
-    - [x] Scelta del modello AI.
-- [x] **Fase 2: Sviluppo Backend**
-    - [x] API per gestione utenti e autenticazione.
-    - [x] API per la gestione delle prenotazioni e valutazioni.
-    - [x] API per l'analisi dei sintomi e suggerimenti (Integrazione AI).
-    - [x] API per la ricerca geolocalizzata di specialisti (Utility).
-- [x] **Fase 3: Sicurezza Backend**
-    - [x] Implementazione di Authentication e Authorization (JWT) su tutti gli endpoint sensibili.
-- [x] **Fase 4: Integrazione AI Avanzata**
-    - [x] Implementazione orchestratore LangGraph con memoria conversazionale.
-    - [x] Sviluppo strumenti RAG per ricerca specialisti medici.
-    - [x] Sistema di tool calling per raccomandazioni intelligenti.
-- [x] **Fase 5: Sviluppo Frontend Core**
-    - [x] Interfaccia utente per la registrazione e il login.
-    - [x] Interfaccia per la ricerca geolocalizzata e la visualizzazione dei profili medici.
-    - [x] Modulo di prenotazione interattivo.
-    - [x] Sezione per la gestione del proprio profilo e delle proprie prenotazioni/valutazioni.
-    - [x] Dashboard medico per gestione appuntamenti e disponibilità.
-    - [x] Sistema di chat AI con interfaccia utente completa.
-- [x] **Fase 6: Refactor e Ottimizzazione**
-    - [x] Implementazione pattern database con context manager.
-    - [x] Centralizzazione helper JavaScript e utility API.
-    - [x] Sanitizzazione sicurezza frontend (prevenzione XSS).
-    - [x] Modularizzazione architettura frontend con componenti riutilizzabili.
-- [ ] **Fase 7: Finalizzazione e Polish**
-    - [ ] Completamento interfacce utente con feedback UX.
-    - [ ] Ottimizzazione performance e responsività mobile.
-    - [ ] Miglioramento gestione errori e validazione input.
-- [ ] **Fase 8: Testing e Distribuzione**
-    - [ ] Test unitari e di integrazione completi.
-    - [ ] Test end-to-end delle funzionalità critiche.
-    - [ ] Debugging finale e ottimizzazione delle performance.
-    - [ ] Preparazione per la distribuzione in produzione.
+* **Modello:** Viene utilizzato **Qwen2.5**, un modello linguistico di grandi dimensioni (LLM) eseguito localmente tramite **Ollama**, che riduce la dipendenza da servizi cloud esterni.
+* **LangGraph:** L'interazione con l'AI è gestita da un'architettura ad agenti basata su `LangGraph`. Questo permette di definire flussi conversazionali complessi in cui l'agente può decidere autonomamente se rispondere direttamente o utilizzare strumenti esterni (come la ricerca di specialisti).
+* **LangChain e FAISS:** Per fornire raccomandazioni accurate, è stato implementato un sistema **RAG**. `LangChain` viene utilizzato per orchestrare il recupero di informazioni da una base di conoscenza di specializzazioni mediche, indicizzata in un vector store **FAISS** per una ricerca semantica efficiente.
 
 ## Contributi
 Questo progetto è sviluppato da [tremorz3] e [raaiss].
