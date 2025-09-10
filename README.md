@@ -6,7 +6,7 @@ Questo progetto di tesi mira allo sviluppo di una piattaforma web innovativa: un
 ## Tecnologie Utilizzate
 * **Backend:** Python 3.10, FastAPI, MariaDB
 * **Intelligenza Artificiale:** 
-    * Ollama con modello MedGemma/Llama 3.1
+    * Ollama con modello Qwen2.5
     * LangGraph per orchestrazione agenti AI
     * LangChain per strumenti RAG
     * FAISS per vector store e ricerca semantica
