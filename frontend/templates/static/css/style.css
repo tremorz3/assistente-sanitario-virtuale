@@ -288,9 +288,13 @@ a:hover {
     border-radius: 18px;
     max-width: 85%;
     line-height: 1.4;
+    /* Preserva i ritorni a capo anche se non dentro <p> */
+    white-space: pre-line;
 }
 .chat-message p {
     margin: 0;
+    /* Preserva i ritorni a capo (\n) come interruzioni di riga */
+    white-space: pre-line;
 }
 .user-message {
     background-color: var(--primary-color);
@@ -1574,4 +1578,3 @@ a:hover {
         transform: rotate(-45deg) translate(7px, -7px);
     }
 }
-
