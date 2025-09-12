@@ -1,4 +1,11 @@
 from fastapi import FastAPI
+import logging
+
+# Configura logging per vedere i debug messages
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Import dei router
 from routers import disponibilita_routes, auth_routes, chat_routes, general_routes, prenotazioni_routes, valutazioni_routes

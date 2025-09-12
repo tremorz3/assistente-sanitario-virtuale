@@ -16,13 +16,9 @@ from .config import LLM_MODEL, OLLAMA_BASE_URL
 from pydantic import BaseModel, Field
 
 class CompletenessAssessment(BaseModel):
-    """Schema per valutazione completezza sintomi"""
-    sufficiente: bool = Field(description="True se info sufficienti per raccomandazione specialista")
-    punteggio: int = Field(ge=0, le=100, description="Punteggio completezza (0-100, sufficiente ≥60)")
-    confidenza: float = Field(ge=0, le=100, description="Confidenza valutazione (0-100)")
-    domanda_followup: Optional[str] = Field(description="Domanda specifica per elemento mancante più critico")
-    elementi_mancanti: list[str] = Field(description="Lista elementi mancanti in ordine di priorità")
-    elemento_mancante_critico: Optional[str] = Field(description="Elemento singolo più importante da raccogliere")
+    """Schema di risposta per valutazione completezza sintomi"""
+    soddisfatto: bool = Field(description="True se utente ha fornito tutte le informazioni necessarie")
+    domanda_followup: Optional[str] = Field(description="Domanda specifica per raccogliere informazioni mancanti, null se completo")
 
 logger = logging.getLogger(__name__)
 
@@ -37,108 +33,68 @@ class SymptomAnalyzer:
         )
         
         self.assessment_prompt = ChatPromptTemplate.from_template("""
-Sei un assistente medico AI che valuta la completezza delle informazioni sui sintomi in modo progressivo e user-friendly.
+Sei un assistente medico per triage orientativo. Leggi questa conversazione:
 
-Analizza TUTTI i messaggi dell'utente (non solo l'ultimo) per valutare le informazioni raccolte finora.
-
-MESSAGGIO ATTUALE:
-{current_message}
-
-CRONOLOGIA CONVERSAZIONE COMPLETA:
 {conversation_history}
 
-TENTATIVO CORRENTE: {tentativo_numero}
+Valuta se hai le informazioni necessarie per raccomandare il medico specialista adeguato
 
-SISTEMA DI PUNTEGGIO (sufficiente ≥60/100):
-• Sintomo principale specifico: +35 punti
-• Durata/frequenza chiara: +25 punti  
-• Presenza/assenza di trauma: +20 punti
-• Sintomi accessori significativi: +20 punti
-• Caratteristiche del sintomo: +10 punti (opzionale)
+VALUTAZIONE:
+- Se utente ti ha fornito una descrizione chiara del problema di salute → soddisfatto = true, domanda_followup = null
+- Se le informazioni dell'utente non ti rendono chiaro il problema→ soddisfatto = false, fai UNA domanda per disambiguare
 
-ACCETTA LINGUAGGIO COMUNE:
-✅ "Male da ieri" (durata implicita)
-✅ "Dolore forte" (intensità come caratteristica)
-✅ "Non riesco a dormire" (impatto funzionale)
-✅ "Fa male tantissimo" (intensità implicita)
-✅ "Sono caduto ieri" (trauma implicito)
-✅ "Dopo la botta" (trauma implicito)
-
-STRATEGIA DOMANDE SPECIFICHE PER ELEMENTO MANCANTE:
-- Se manca SINTOMO_SPECIFICO: "Per aiutarti al meglio, puoi descrivermi che tipo di disturbo o fastidio stai avvertendo?"
-- Se manca DURATA: "Da quanto tempo avverti questo [sintoma]? È iniziato oggi, ieri, qualche giorno fa?"
-- Se manca TRAUMA: "Questo [sintoma] è comparso dopo una caduta, un colpo, un incidente o qualche trauma? Oppure è iniziato spontaneamente?"
-- Se mancano SINTOMI_ACCESSORI: "Hai notato altri sintomi insieme a questo [sintoma]? Ad esempio nausea, febbre, sudorazione o altro?"
-- Se manca CARATTERISTICHE: "Come descriveresti questo [sintoma]? È un dolore sordo, pulsante, bruciante, o di altro tipo?" (solo se necessario per completezza)
-
-STRATEGIA PER TENTATIVO:
-- Tentativo 1: Domanda su elemento_mancante_critico (il più importante)
-- Tentativo 2: Domanda su secondo elemento dalla lista elementi_mancanti
-- Tentativo 3: Domanda finale su dettaglio mancante + avviso che si procederà
-
-IMPORTANTE: 
-- Usa sempre il campo elemento_mancante_critico per generare domanda specifica
-- Personalizza la domanda con il sintoma già menzionato se presente
-- Genera domande conversazionali, empatiche e specifiche
-- Evita gergo medico complesso
-        """)
+Fai MASSIMO 2-3 domande, poi considera le informazioni sufficienti.
+""")
     
-    async def assess_completeness(self, current_message: str, conversation_history: List[BaseMessage], tentativo_numero: int = 1) -> CompletenessAssessment:
+    async def assess_completeness(self, conversation_history: List[BaseMessage], tentativo_numero: int = 1) -> CompletenessAssessment:
         """
         Valuta completezza informazioni sintomi usando AI structured output progressivo.
         
         Args:
-            current_message: Ultimo messaggio utente
-            conversation_history: Cronologia messaggi precedenti
-            tentativo_numero: Numero tentativo corrente (1-3)
+            conversation_history: Cronologia completa messaggi della conversazione
+            tentativo_numero: Numero tentativo corrente (progressivo)
             
         Returns:
             CompletenessAssessment: Valutazione strutturata con domande follow-up intelligenti
         """
         try:
-            # Combina TUTTI i messaggi utente per analisi completa
-            all_user_messages = []
-            for msg in conversation_history:
+            # Estrai TUTTA la conversazione (utente + bot) per contesto completo
+            full_conversation = []
+            for i, msg in enumerate(conversation_history):
                 if isinstance(msg, HumanMessage):
-                    all_user_messages.append(f"Utente: {msg.content}")
+                    full_conversation.append(f"Utente: {msg.content}")
+                    logger.info(f"[{i}] USER: {msg.content}")
+                elif hasattr(msg, 'content') and msg.content:
+                    full_conversation.append(f"Bot: {msg.content}")
+                    logger.info(f"[{i}] AI: {msg.content[:100]}...")
             
-            # Aggiungi il messaggio corrente se non già incluso
-            if current_message and f"Utente: {current_message}" not in all_user_messages:
-                all_user_messages.append(f"Utente: {current_message}")
-            
-            history_text = "\n".join(all_user_messages) if all_user_messages else "(Nessuna cronologia precedente)"
+            history_text = "\n".join(full_conversation) if full_conversation else "(Nessuna cronologia precedente)"
+            logger.info(f"=== SYMPTOM ANALYZER INPUT ===")
+            logger.info(f"Total conversation turns: {len(full_conversation)}")
+            logger.info(f"History text length: {len(history_text)}")
+            logger.info(f"=== SENDING TO LLM ===")
+            logger.info(f"Full history text:\n{history_text}")
+            logger.info(f"==================================")
             
             # Structured LLM per output affidabile
             structured_llm = self.llm.with_structured_output(CompletenessAssessment)
             assessment_chain = self.assessment_prompt | structured_llm
             
-            logger.debug(f"Analyzing symptom completeness: {current_message[:50]}...")
+            logger.debug(f"Analyzing symptom completeness for {len(full_conversation)} conversation turns...")
             
             result = await assessment_chain.ainvoke({
-                "current_message": current_message,
                 "conversation_history": history_text,
                 "tentativo_numero": tentativo_numero
             })
             
-            logger.info(f"Completeness assessment: sufficient={result.sufficiente}, confidence={result.confidenza}")
+            logger.info(f"Completeness assessment: soddisfatto={result.soddisfatto}")
+            logger.info(f"Generated follow-up question: '{result.domanda_followup}'")
             return result
             
         except Exception as e:
             logger.error(f"Error in symptom analysis: {e}")
             # Fallback conservativo: domanda specifica per primo contatto
             return CompletenessAssessment(
-                sufficiente=False,
-                punteggio=10,
-                confidenza=0,
-                domanda_followup="Per aiutarti al meglio, puoi descrivermi che tipo di disturbo o fastidio stai avvertendo?",
-                elementi_mancanti=["sintomo_specifico", "durata", "trauma", "sintomi_accessori"],
-                elemento_mancante_critico="sintomo_specifico"
+                soddisfatto=False,
+                domanda_followup="Per aiutarti al meglio, puoi descrivermi che tipo di disturbo o fastidio stai avvertendo?"
             )
-    
-    def _extract_symptoms_from_history(self, history: List[BaseMessage]) -> str:
-        """Estrae tutti i sintomi dalla cronologia conversazione"""
-        symptoms = []
-        for msg in history:
-            if isinstance(msg, HumanMessage):
-                symptoms.append(msg.content)
-        return " | ".join(symptoms)

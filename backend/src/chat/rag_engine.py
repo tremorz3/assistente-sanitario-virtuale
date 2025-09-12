@@ -51,7 +51,7 @@ ISTRUZIONI:
 1. Analizza i sintomi in relazione alle competenze degli specialisti nel contesto
 2. Identifica il pattern sintomatologico principale
 3. Raccomanda lo specialista più appropriato per quel pattern
-4. Fornisci motivazione clinica chiara, professionale e dettagliata
+4. Fornisci motivazione clinica BREVE (massimo 2-3 righe), chiara e professionale
 
 Sii professionale ma accessibile. Evita diagnosi specifiche, concentrati sulla direzione specialistica.
         """)
@@ -71,7 +71,7 @@ Sii professionale ma accessibile. Evita diagnosi specifiche, concentrati sulla d
             logger.debug(f"Starting RAG analysis for symptoms: {symptoms_text[:100]}...")
             
             retriever = get_retriever(k_results=5)
-            relevant_docs = retriever.get_relevant_documents(symptoms_text)
+            relevant_docs = retriever.invoke(symptoms_text)
             
             if not relevant_docs:
                 logger.warning("No relevant documents found in vector search")
@@ -110,25 +110,3 @@ Ti consiglio di consultare il tuo Medico di Medicina Generale che potrà:
 
 Il medico di base è sempre il punto di partenza ideale per un inquadramento iniziale."""
         )
-    
-    async def test_rag_pipeline(self):
-        """Test rapido del pipeline RAG"""
-        test_symptoms = [
-            "mal di testa pulsante con nausea",
-            "dolore al petto con affanno",
-            "dolore addominale localizzato"
-        ]
-        
-        for symptoms in test_symptoms:
-            logger.info(f"Testing RAG with: {symptoms}")
-            result = await self.find_specialist(symptoms)
-            logger.info(f"Result: {result.specialista} - {result.urgenza}")
-
-if __name__ == "__main__":
-    import asyncio
-    
-    async def test():
-        engine = RAGEngine()
-        await engine.test_rag_pipeline()
-    
-    asyncio.run(test())
