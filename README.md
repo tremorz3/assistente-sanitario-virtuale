@@ -68,7 +68,7 @@ La sicurezza dell'applicazione è stata gestita attraverso l'implementazione di 
 L'intelligenza artificiale è il nucleo dell'esperienza utente per l'orientamento sanitario.
 
 * **Modello:** Viene utilizzato **Qwen2.5**, un modello linguistico di grandi dimensioni (LLM) eseguito localmente tramite **Ollama**, che riduce la dipendenza da servizi cloud esterni.
-* **LangGraph:** L'interazione con l'AI è gestita da un'architettura ad agenti basata su `LangGraph`. Questo permette di definire flussi conversazionali complessi in cui l'agente può decidere autonomamente se rispondere direttamente o utilizzare strumenti esterni (come la ricerca di specialisti).
+* **LangGraph:** L'interazione con l'AI è gestita da un'architettura ad agenti basata su `LangGraph`. 
 * **LangChain e FAISS:** Per fornire raccomandazioni accurate, è stato implementato un sistema **RAG**. `LangChain` viene utilizzato per orchestrare il recupero di informazioni da una base di conoscenza di specializzazioni mediche, indicizzata in un vector store **FAISS** per una ricerca semantica efficiente.
 
 ## Contatti
